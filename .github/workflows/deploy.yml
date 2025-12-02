@@ -24,18 +24,12 @@ jobs:
         key: ${{ secrets.SSH_PRIVATE_KEY }}
         script: |
 
-        
           echo "--- Starting full deployment script on server ---"
           
           # 1. Navigate to the application directory
           cd ${{ env.DEPLOY_PATH }}
           
-          # 2. Stop and delete the existing PM2 process (ignore error if it doesn't exist yet)
-          # We use stop/delete/start for guaranteed fresh process loading
-          pm2 stop rojgari-next || true
-          pm2 delete rojgari-next || true
-          
-          # 3. Pull the latest code from GitHub
+          # 2. Pull the latest code from GitHub
           if [ ! -d .git ]; then
             echo "Initializing Git repository and cloning..."
             git init
@@ -46,19 +40,28 @@ jobs:
           git fetch
           git reset --hard origin/main
           
-          # 4. Install dependencies (Only runs if changes in package.json)
+          # 3. Install dependencies
           echo "Installing dependencies..."
           npm install
 
-          # 5. Build the Next.js application
+          # 4. Build the Next.js application
           echo "Building application..."
           npm run build
 
-          # 6. Start PM2 using your stable start.sh script
-          echo "Starting fresh PM2 process via start.sh"
-          pm2 start ./start.sh --name rojgari-next --interpreter 'bash' --update-env
+          # 5. Check if PM2 process exists, then RELOAD or START
+          # This logic ensures 0-downtime and forces the new build to be loaded.
+          if pm2 list | grep -q "rojgari-next"; then
+            echo "Reloading existing PM2 process to load new build..."
+            pm2 reload rojgari-next --update-env
+          else
+            echo "Starting new PM2 process for the first time..."
+            pm2 start ./start.sh --name rojgari-next --interpreter 'bash' --update-env
+          fi
           
-          # 7. Restart Nginx to clear any potential proxy cache (Optional, but recommended)
+          # Save PM2 configuration to ensure the process restarts after server reboot
+          pm2 save
+          
+          # 6. Restart Nginx to clear any potential proxy cache
           echo "Restarting Nginx to clear cache..."
           sudo systemctl restart nginx
           
