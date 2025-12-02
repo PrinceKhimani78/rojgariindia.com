@@ -7,6 +7,8 @@ on:
 
 env:
   DEPLOY_PATH: /home/rojgariindia.com/app
+  # Use the absolute path you just confirmed
+  NPM_BIN: /usr/bin/npm 
   
 jobs:
   deploy:
@@ -40,16 +42,16 @@ jobs:
           git fetch
           git reset --hard origin/main
           
-          # 3. Install dependencies
+          # 3. Install dependencies using absolute path
           echo "Installing dependencies..."
-          npm install
+          ${{ env.NPM_BIN }} install
 
-          # 4. Build the Next.js application
+          # 4. Build the Next.js application using absolute path
           echo "Building application..."
-          npm run build
+          ${{ env.NPM_BIN }} run build
 
           # 5. Check if PM2 process exists, then RELOAD or START
-          # This logic ensures 0-downtime and forces the new build to be loaded.
+          # This ensures the new code is loaded reliably by PM2
           if pm2 list | grep -q "rojgari-next"; then
             echo "Reloading existing PM2 process to load new build..."
             pm2 reload rojgari-next --update-env
@@ -58,10 +60,8 @@ jobs:
             pm2 start ./start.sh --name rojgari-next --interpreter 'bash' --update-env
           fi
           
-          # Save PM2 configuration to ensure the process restarts after server reboot
+          # 6. Save PM2 config and Restart Nginx
           pm2 save
-          
-          # 6. Restart Nginx to clear any potential proxy cache
           echo "Restarting Nginx to clear cache..."
           sudo systemctl restart nginx
           
