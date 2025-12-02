@@ -23,13 +23,17 @@ jobs:
         username: ${{ secrets.DEPLOY_USERNAME }}
         key: ${{ secrets.SSH_PRIVATE_KEY }}
         script: |
+
+        
           echo "--- Starting full deployment script on server ---"
           
           # 1. Navigate to the application directory
           cd ${{ env.DEPLOY_PATH }}
           
-          # 2. Stop the PM2 process temporarily (ignore error if it doesn't exist yet)
+          # 2. Stop and delete the existing PM2 process (ignore error if it doesn't exist yet)
+          # We use stop/delete/start for guaranteed fresh process loading
           pm2 stop rojgari-next || true
+          pm2 delete rojgari-next || true
           
           # 3. Pull the latest code from GitHub
           if [ ! -d .git ]; then
@@ -42,16 +46,20 @@ jobs:
           git fetch
           git reset --hard origin/main
           
-          # 4. Install dependencies (Crucial for first deploy)
+          # 4. Install dependencies (Only runs if changes in package.json)
           echo "Installing dependencies..."
           npm install
 
-          # 5. Build the Next.js application (Crucial for first deploy)
+          # 5. Build the Next.js application
           echo "Building application..."
           npm run build
 
-          # 6. Restart PM2 using your stable start.sh script
-          echo "Restarting PM2 process via start.sh"
+          # 6. Start PM2 using your stable start.sh script
+          echo "Starting fresh PM2 process via start.sh"
           pm2 start ./start.sh --name rojgari-next --interpreter 'bash' --update-env
+          
+          # 7. Restart Nginx to clear any potential proxy cache (Optional, but recommended)
+          echo "Restarting Nginx to clear cache..."
+          sudo systemctl restart nginx
           
           echo "--- Deployment finished successfully! ---"
