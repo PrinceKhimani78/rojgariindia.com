@@ -1,0 +1,67 @@
+# .github/workflows/deploy.yml
+
+name: Deploy Next.js to Production Server
+
+on:
+  push:
+    branches:
+      - main
+
+env:
+  DEPLOY_PATH: /home/rojgariindia.com/app
+  
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: ⬇️ Checkout code
+      uses: actions/checkout@v4
+
+    # The build/install steps are REMOVED from the GitHub Runner
+    # and moved to the server deployment script.
+
+    - name: 🚀 Deploy to Server and Run Setup via SSH
+      uses: appleboy/ssh-action@v1.0.3
+      with:
+        host: ${{ secrets.DEPLOY_HOST }}
+        username: ${{ secrets.DEPLOY_USERNAME }}
+        key: ${{ secrets.SSH_PRIVATE_KEY }}
+        script: |
+          echo "--- Starting full deployment script on server ---"
+          
+          # 1. Navigate to the application directory
+          cd ${{ env.DEPLOY_PATH }}
+          
+          # 2. Stop the PM2 process temporarily (ignore error if it doesn't exist yet)
+          pm2 stop rojgari-next || true
+          
+          # 3. Pull the latest code from GitHub (requires SSH key setup, which we did)
+          # Note: If this is the first deployment, the directory might be empty, 
+          # so we clone or initialize git first.
+
+          # Initialize git and pull if this is the first time
+          if [ ! -d .git ]; then
+            echo "Initializing Git repository and cloning..."
+            git init
+            # Replace PrinceKhimani78/rojgariindia.com with your actual repo path if different
+            git remote add origin https://github.com/PrinceKhimani78/rojgariindia.com.git
+          fi
+          
+          echo "Pulling latest code..."
+          git fetch
+          git reset --hard origin/main
+          
+          # 4. Install dependencies (Crucial for first deploy)
+          echo "Installing dependencies..."
+          npm install
+
+          # 5. Build the Next.js application (Crucial for first deploy)
+          echo "Building application..."
+          npm run build
+
+          # 6. Restart PM2 using your stable start.sh script
+          echo "Restarting PM2 process via start.sh"
+          pm2 start ./start.sh --name rojgari-next --interpreter 'bash' --update-env
+          
+          echo "--- Deployment finished successfully! ---"
