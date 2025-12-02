@@ -263,7 +263,7 @@ export default function ComingSoon() {
           className="fontAL text-sm sm:text-base text-[#000000] mt-15 sm:mt-15 max-w-[90%] sm:max-w-xl"
         >
           We’re bridging the distance between people seeking work and the
-          workplaces that need them. Test
+          workplaces that need them. Testaa
         </motion.p>
 
         {/* Social Icons */}
