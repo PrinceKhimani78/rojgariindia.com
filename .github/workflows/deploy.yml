@@ -18,17 +18,24 @@ jobs:
         with:
           node-version: 20
 
-      - name: Install Dependencies (Clean)
+      - name: Install Dependencies
         run: npm ci
 
-      - name: Build Next.js App
+      - name: Build Next.js
         run: npm run build
 
-      - name: Prepare Release Folder
+      - name: Prepare Release
         run: |
+          rm -rf release
           mkdir -p release
-          cp -r .next package.json package-lock.json public ecosystem.config.js start.sh next.config.ts server.js release/
-          tar -czf release/app.tar.gz -C release .
+
+          # Copy necessary files to release/
+          cp -r .next public package.json package-lock.json start.sh next.config.ts server.js ecosystem.config.js release/
+
+          # Create tar WITHOUT including release folder itself
+          cd release
+          tar -czf ../app.tar.gz .
+          cd ..
 
       - name: Upload Release to Server
         uses: appleboy/scp-action@v0.1.7
@@ -36,8 +43,8 @@ jobs:
           host: ${{ secrets.DEPLOY_HOST }}
           username: ${{ secrets.DEPLOY_USERNAME }}
           key: ${{ secrets.SSH_PRIVATE_KEY }}
-          source: "release/app.tar.gz"
-          target: "/home/rojgariindia.com/app.tar.gz"   # ✔ FIXED PATH
+          source: "app.tar.gz"
+          target: "/home/rojgariindia.com/app.tar.gz"
 
       - name: Deploy on Server
         uses: appleboy/ssh-action@v1.0.3
@@ -50,17 +57,17 @@ jobs:
 
             cd /home/rojgariindia.com/app
 
-            echo "Cleaning old build..."
+            echo "Removing old build..."
             rm -rf .next public
 
             echo "Extracting new build..."
             tar -xzf /home/rojgariindia.com/app.tar.gz
             rm /home/rojgariindia.com/app.tar.gz
 
-            echo "Installing production deps..."
+            echo "Installing production dependencies..."
             npm install --omit=dev
 
-            echo "Restarting PM2..."
+            echo "Reloading PM2..."
             if pm2 list | grep -q "rojgari-next"; then
               pm2 reload rojgari-next --update-env
             else
@@ -68,8 +75,6 @@ jobs:
             fi
 
             pm2 save
-
-            echo "Restarting OpenLiteSpeed..."
             sudo systemctl restart lsws
 
             echo "---- Deployment Complete ----"
