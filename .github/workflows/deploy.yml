@@ -12,6 +12,9 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
 
+      - name: Clean old release folder
+        run: rm -rf release
+
       - name: Prepare release bundle
         run: |
           mkdir -p release
