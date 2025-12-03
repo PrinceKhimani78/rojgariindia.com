@@ -5,64 +5,87 @@ on:
     branches:
       - main
 
-env:
-  DEPLOY_PATH: /home/rojgariindia.com/app
-  # Use the absolute path you just confirmed
-  NPM_BIN: /usr/bin/npm 
-  
 jobs:
-  deploy:
+  build:
     runs-on: ubuntu-latest
-    
+
     steps:
-    - name: ⬇️ Checkout code
-      uses: actions/checkout@v4
+      # 1) Checkout repo
+      - name: Checkout code
+        uses: actions/checkout@v4
 
-    - name: 🚀 Deploy to Server and Run Setup via SSH
-      uses: appleboy/ssh-action@v1.0.3
-      with:
-        host: ${{ secrets.DEPLOY_HOST }}
-        username: ${{ secrets.DEPLOY_USERNAME }}
-        key: ${{ secrets.SSH_PRIVATE_KEY }}
-        script: |
+      # 2) Setup Node
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
 
-          echo "--- Starting full deployment script on server ---"
-          
-          # 1. Navigate to the application directory
-          cd ${{ env.DEPLOY_PATH }}
-          
-          # 2. Pull the latest code from GitHub
-          if [ ! -d .git ]; then
-            echo "Initializing Git repository and cloning..."
-            git init
-            git remote add origin https://github.com/PrinceKhimani78/rojgariindia.com.git
-          fi
-          
-          echo "Pulling latest code..."
-          git fetch
-          git reset --hard origin/main
-          
-          # 3. Install dependencies using absolute path
-          echo "Installing dependencies..."
-          ${{ env.NPM_BIN }} install
+      # 3) Install packages
+      - name: Install dependencies
+        run: npm ci
 
-          # 4. Build the Next.js application using absolute path
-          echo "Building application..."
-          ${{ env.NPM_BIN }} run build
+      # 4) Build Next.js
+      - name: Build Next.js
+        run: npm run build
 
-          # 5. Check if PM2 process exists, then RELOAD or START
-          # This ensures the new code is loaded reliably by PM2
-          if pm2 list | grep -q "rojgari-next"; then
-            echo "Reloading existing PM2 process to load new build..."
-            pm2 reload rojgari-next --update-env
-          else
-            echo "Starting new PM2 process for the first time..."
-            pm2 start ./start.sh --name rojgari-next --interpreter 'bash' --update-env
-          fi
-          
-          # 6. Save PM2 config and Restart Nginx
-          pm2 save
-          echo "Restarting Nginx to clear cache..."
-          sudo systemctl restart nginx
-          
-          echo "--- Deployment finished successfully! ---"
+      # 5) Create deployable artifact
+      - name: Package release
+        run: |
+          mkdir -p release
+          tar -czf release/app.tar.gz \
+            .next \
+            public \
+            package.json \
+            package-lock.json \
+            next.config.* \
+            start.sh \
+            server.js \
+            .env.local || true
+
+      # 6) Upload artifact to server
+      - name: Upload artifact
+        uses: appleboy/scp-action@v0.1.7
+        with:
+          host: ${{ secrets.DEPLOY_HOST }}
+          username: ${{ secrets.DEPLOY_USERNAME }}
+          key: ${{ secrets.SSH_PRIVATE_KEY }}
+          source: "release/app.tar.gz"
+          target: "/home/rojgariindia.com/app"
+
+      # 7) Deploy on server — extract, install, pm2 reload
+      - name: Deploy on server
+        uses: appleboy/ssh-action@v1.0.3
+        with:
+          host: ${{ secrets.DEPLOY_HOST }}
+          username: ${{ secrets.DEPLOY_USERNAME }}
+          key: ${{ secrets.SSH_PRIVATE_KEY }}
+
+          script: |
+            echo "---- Deployment Started ----"
+            cd /home/rojgariindia.com/app
+
+            echo "Extracting release..."
+            rm -rf .next
+            rm -rf public
+
+            tar -xzf app.tar.gz
+            rm app.tar.gz
+
+            echo "Installing production dependencies..."
+            npm install --omit=dev
+
+            echo "Reloading PM2 process (rojgari-next)..."
+            if pm2 list | grep -q "rojgari-next"; then
+              pm2 reload rojgari-next --update-env
+            else
+              echo "PM2 process not found. Starting new one..."
+              pm2 start ./start.sh --name rojgari-next --interpreter bash
+            fi
+
+            pm2 save
+
+            echo "Restarting OpenLiteSpeed..."
+            sudo systemctl restart lsws
+
+            echo "---- Deployment Complete ----"
