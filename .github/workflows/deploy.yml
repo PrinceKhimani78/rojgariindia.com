@@ -2,19 +2,16 @@ name: Deploy Next.js to Production Server
 
 on:
   push:
-    branches:
-      - main
+    branches: [main]
 
 jobs:
   build:
     runs-on: ubuntu-latest
 
     steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
+      - uses: actions/checkout@v4
 
-      - name: Setup Node
-        uses: actions/setup-node@v4
+      - uses: actions/setup-node@v4
         with:
           node-version: 20
           cache: npm
@@ -22,14 +19,25 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
-      - name: Build Next.js App
+      - name: Build Next.js app
         run: npm run build
 
       - name: Create release folder
         run: |
           rm -rf release
           mkdir release
-          cp -r .next package.json package-lock.json public start.sh release/
+          cp -r .next public package.json package-lock.json start.sh release/
+
+      # 🔥 FIX: prepare server folder
+      - name: Prepare server folder
+        uses: appleboy/ssh-action@v1.0.3
+        with:
+          host: ${{ secrets.DEPLOY_HOST }}
+          username: ${{ secrets.DEPLOY_USERNAME }}
+          key: ${{ secrets.SSH_PRIVATE_KEY }}
+          script: |
+            mkdir -p /home/rojgariindia.com/app
+            rm -rf /home/rojgariindia.com/app/*
 
       - name: Upload build to server
         uses: appleboy/scp-action@v0.1.7
@@ -37,22 +45,19 @@ jobs:
           host: ${{ secrets.DEPLOY_HOST }}
           username: ${{ secrets.DEPLOY_USERNAME }}
           key: ${{ secrets.SSH_PRIVATE_KEY }}
-          port: 22
           source: "release/*"
           target: "/home/rojgariindia.com/app"
           overwrite: true
 
-      - name: Run deploy script on server
+      - name: Deploy on server
         uses: appleboy/ssh-action@v1.0.3
         with:
           host: ${{ secrets.DEPLOY_HOST }}
           username: ${{ secrets.DEPLOY_USERNAME }}
           key: ${{ secrets.SSH_PRIVATE_KEY }}
-          port: 22
           script: |
-            echo "---- Deployment Started ----"
+            echo "Starting Deployment..."
             cd /home/rojgariindia.com/app
-
             npm install --omit=dev
 
             if pm2 list | grep -q "rojgari-next"; then
@@ -60,7 +65,7 @@ jobs:
             else
               pm2 start ./start.sh --name rojgari-next --interpreter bash
             fi
-
+            
             pm2 save
             sudo systemctl restart lsws
-            echo "---- Deployment Complete ----"
+            echo "Deployment Done!"
