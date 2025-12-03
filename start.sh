@@ -1,11 +1,13 @@
 #!/bin/bash
 
-cd /home/rojgariindia.com/app
+APP_DIR="/home/rojgariindia.com/app/release"
 
-# Load environment variables
+cd $APP_DIR
+
+# Load environment variables if exist
 if [ -f .env.local ]; then
   export $(grep -v '^#' .env.local | xargs)
 fi
 
 echo ">>> Starting Next.js on port 3010"
-exec /usr/bin/npm start -- -p 3010 -H 0.0.0.0
+exec npm start -- -p 3010 -H 0.0.0.0
