@@ -249,7 +249,7 @@ export default function ComingSoon() {
             >
               <FaCheckCircle className="text-[#FFD633] text-lg sm:text-2xl" />
               <p className="font-medium text-sm sm:text-base">
-                Subscribed successfully!
+                Subscribed successfully hi!
               </p>
             </motion.div>
           )}
