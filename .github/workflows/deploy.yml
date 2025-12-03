@@ -1,56 +1,55 @@
-name: Deploy Next.js to Production Server
+name: Deploy Next.js
 
 on:
   push:
-    branches:
-      - main
+    branches: ["main"]
 
 jobs:
   build:
     runs-on: ubuntu-latest
 
     steps:
-      - name: Checkout code
+      - name: Checkout Repo
         uses: actions/checkout@v4
 
-      - name: Setup Node.js
+      - name: Setup Node
         uses: actions/setup-node@v4
         with:
           node-version: 20
+          cache: npm
 
-      - name: Install dependencies
+      - name: Install Dependencies
         run: npm ci
 
-      - name: Build Next.js app
+      - name: Build Next.js
         run: npm run build
 
-      - name: Clean release folder
-        run: rm -rf release && mkdir -p release
-
-      - name: Copy production files
+      - name: Prepare release folder
         run: |
-          cp -r .next package.json package-lock.json public start.sh release/
+          rm -rf release
+          mkdir release
+          cp -r .next package.json package-lock.json public server.js start.sh release/
 
-      - name: Upload files to server
+      - name: Upload to server
         uses: appleboy/scp-action@v0.1.7
         with:
           host: ${{ secrets.DEPLOY_HOST }}
           username: ${{ secrets.DEPLOY_USERNAME }}
           key: ${{ secrets.SSH_PRIVATE_KEY }}
           source: "release/*"
-          target: "/home/rojgariindia.com/app"
+          target: "/home/rojgariindia.com/app/release"
           overwrite: true
 
-      - name: Run deployment script on server
+      - name: Run Deploy Script
         uses: appleboy/ssh-action@v1.0.3
         with:
           host: ${{ secrets.DEPLOY_HOST }}
           username: ${{ secrets.DEPLOY_USERNAME }}
           key: ${{ secrets.SSH_PRIVATE_KEY }}
           script: |
-            echo "Starting Deployment..."
+            echo "🚀 Starting Deployment..."
 
-            cd /home/rojgariindia.com/app
+            cd /home/rojgariindia.com/app/release
 
             npm install --omit=dev
 
@@ -63,4 +62,4 @@ jobs:
             pm2 save
             sudo systemctl restart lsws
 
-            echo "Deployment Done!"
+            echo "🎉 Deployment Done!"
