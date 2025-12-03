@@ -5,10 +5,6 @@ on:
     branches:
       - main
 
-env:
-  APP_PATH: /home/rojgariindia.com/app
-  NPM_BIN: /usr/bin/npm
-
 jobs:
   build:
     runs-on: ubuntu-latest
@@ -17,31 +13,23 @@ jobs:
       - name: Checkout Code
         uses: actions/checkout@v4
 
-      - name: Setup Node
+      - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
           node-version: 20
-          cache: npm
 
-      - name: Install Dependencies
+      - name: Install Dependencies (Clean)
         run: npm ci
 
-      - name: Build Next.js
+      - name: Build Next.js App
         run: npm run build
 
-      - name: Create Release Package
+      - name: Prepare Release Folder
         run: |
           mkdir -p release
-          tar -czf release/app.tar.gz \
-            .next \
-            public \
-            package.json \
-            package-lock.json \
-            next.config.ts \
-            server.js \
-            start.sh \
-            ecosystem.config.js
-          
+          cp -r .next package.json package-lock.json public ecosystem.config.js start.sh next.config.ts server.js release/
+          tar -czf release/app.tar.gz -C release .
+
       - name: Upload Release to Server
         uses: appleboy/scp-action@v0.1.7
         with:
@@ -49,7 +37,7 @@ jobs:
           username: ${{ secrets.DEPLOY_USERNAME }}
           key: ${{ secrets.SSH_PRIVATE_KEY }}
           source: "release/app.tar.gz"
-          target: "/home/rojgariindia.com/"
+          target: "/home/rojgariindia.com/app.tar.gz"   # ✔ FIXED PATH
 
       - name: Deploy on Server
         uses: appleboy/ssh-action@v1.0.3
@@ -59,18 +47,20 @@ jobs:
           key: ${{ secrets.SSH_PRIVATE_KEY }}
           script: |
             echo "---- Deployment Started ----"
-            cd ${{ env.APP_PATH }}
 
-            echo "Extracting new release..."
-            rm -rf .next
-            rm -rf public
+            cd /home/rojgariindia.com/app
+
+            echo "Cleaning old build..."
+            rm -rf .next public
+
+            echo "Extracting new build..."
             tar -xzf /home/rojgariindia.com/app.tar.gz
             rm /home/rojgariindia.com/app.tar.gz
 
-            echo "Installing production dependencies..."
-            ${{ env.NPM_BIN }} install --omit=dev
+            echo "Installing production deps..."
+            npm install --omit=dev
 
-            echo "Reloading PM2..."
+            echo "Restarting PM2..."
             if pm2 list | grep -q "rojgari-next"; then
               pm2 reload rojgari-next --update-env
             else
