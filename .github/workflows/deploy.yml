@@ -2,38 +2,38 @@ name: Deploy Next.js to Production Server
 
 on:
   push:
-    branches: [ "main" ]
+    branches:
+      - main
 
 jobs:
   build:
     runs-on: ubuntu-latest
 
     steps:
-      - name: Checkout repo
+      - name: Checkout repository
         uses: actions/checkout@v4
 
-      - name: Setup Node
+      - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
           node-version: 20
 
-      - name: Install dependencies
+      - name: Clean install dependencies
         run: npm ci
 
-      - name: Build project
+      - name: Build Next.js project
         run: npm run build
 
-      - name: Create tarball
+      # PACKAGE BUILD INTO TAR
+      - name: Prepare release artifact
         run: |
           mkdir -p release
-          tar -czf app.tar.gz \
-            .next \
-            public \
-            package.json \
-            package-lock.json \
-            start.sh
+          cp -r .next public package.json package-lock.json start.sh release/
+          cd release
+          tar -czf app.tar.gz ./*
+          mv app.tar.gz ../app.tar.gz
 
-      # Upload files to server
+      # UPLOAD TAR TO SERVER ROOT
       - name: Upload build to server
         uses: appleboy/scp-action@v0.1.7
         with:
@@ -44,8 +44,8 @@ jobs:
           target: "/home/rojgariindia.com/"
           overwrite: true
 
-      # SSH commands on server
-      - name: Deploy on server
+      # DEPLOY ON SERVER
+      - name: Deploy on server via SSH
         uses: appleboy/ssh-action@v1.0.3
         with:
           host: ${{ secrets.DEPLOY_HOST }}
@@ -53,17 +53,28 @@ jobs:
           key: ${{ secrets.SSH_PRIVATE_KEY }}
           script: |
             echo "---- Deployment Started ----"
+
+            # Clean and recreate app folder
             rm -rf /home/rojgariindia.com/app
-            cd /home/rojgariindia.com
-            tar -xzf app.tar.gz
-            rm -f app.tar.gz
-            cd app
+            mkdir -p /home/rojgariindia.com/app
+
+            # Extract inside the app folder
+            cd /home/rojgariindia.com/app
+            tar -xzf ../app.tar.gz
+            rm -f ../app.tar.gz
+
+            # Install server-side prod dependencies
             npm install --omit=dev
+
+            # Restart PM2 safely
             if pm2 list | grep -q "rojgari-next"; then
               pm2 reload rojgari-next --update-env
             else
               pm2 start ./start.sh --name rojgari-next --interpreter bash
             fi
             pm2 save
+
+            # Restart LiteSpeed
             sudo systemctl restart lsws
+
             echo "---- Deployment Complete ----"
