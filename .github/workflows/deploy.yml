@@ -2,8 +2,7 @@ name: Deploy Next.js to Production Server
 
 on:
   push:
-    branches:
-      - main
+    branches: [ "main" ]
 
 jobs:
   build:
@@ -13,39 +12,22 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      - name: Setup Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: 20
-
-      - name: Clean install dependencies
-        run: npm ci
-
-      - name: Build Next.js project
-        run: npm run build
-
-      # PACKAGE BUILD INTO TAR
-      - name: Prepare release artifact
+      - name: Prepare release bundle
         run: |
           mkdir -p release
-          cp -r .next public package.json package-lock.json start.sh release/
-          cd release
-          tar -czf app.tar.gz ./*
-          mv app.tar.gz ../app.tar.gz
+          rsync -av --exclude="node_modules" --exclude=".next" ./ release/
 
-      # UPLOAD TAR TO SERVER ROOT
-      - name: Upload build to server
+      - name: Upload bundle to server
         uses: appleboy/scp-action@v0.1.7
         with:
           host: ${{ secrets.DEPLOY_HOST }}
           username: ${{ secrets.DEPLOY_USERNAME }}
           key: ${{ secrets.SSH_PRIVATE_KEY }}
-          source: "app.tar.gz"
-          target: "/home/rojgariindia.com/"
+          source: "release/*"
+          target: "/home/rojgariindia.com/app"
           overwrite: true
 
-      # DEPLOY ON SERVER
-      - name: Deploy on server via SSH
+      - name: Deploy on server
         uses: appleboy/ssh-action@v1.0.3
         with:
           host: ${{ secrets.DEPLOY_HOST }}
@@ -54,19 +36,15 @@ jobs:
           script: |
             echo "---- Deployment Started ----"
 
-            # Clean and recreate app folder
-            rm -rf /home/rojgariindia.com/app
-            mkdir -p /home/rojgariindia.com/app
-
-            # Extract inside the app folder
             cd /home/rojgariindia.com/app
-            tar -xzf ../app.tar.gz
-            rm -f ../app.tar.gz
 
-            # Install server-side prod dependencies
-            npm install --omit=dev
+            echo "Installing dependencies..."
+            npm install
 
-            # Restart PM2 safely
+            echo "Building Next.js app..."
+            npm run build
+
+            echo "Restarting PM2..."
             if pm2 list | grep -q "rojgari-next"; then
               pm2 reload rojgari-next --update-env
             else
@@ -74,7 +52,7 @@ jobs:
             fi
             pm2 save
 
-            # Restart LiteSpeed
+            echo "Restarting LiteSpeed..."
             sudo systemctl restart lsws
 
             echo "---- Deployment Complete ----"
