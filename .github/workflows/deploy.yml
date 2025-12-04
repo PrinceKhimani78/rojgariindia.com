@@ -27,7 +27,8 @@ jobs:
       - name: Prepare Release Folder
         run: |
           mkdir -p release
-          cp -r .next package.json package-lock.json public start.sh server.js release/
+          cp -r .next public start.sh server.js package.json package-lock.json ./release/
+
 
       - name: Upload Release to Server
         uses: appleboy/scp-action@v0.1.7
