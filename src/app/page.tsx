@@ -249,7 +249,7 @@ export default function ComingSoon() {
             >
               <FaCheckCircle className="text-[#FFD633] text-lg sm:text-2xl" />
               <p className="font-medium text-sm sm:text-base">
-                Subscribed successfully hi!
+                Subscribed successfully!
               </p>
             </motion.div>
           )}
@@ -263,7 +263,7 @@ export default function ComingSoon() {
           className="fontAL text-sm sm:text-base text-[#000000] mt-15 sm:mt-15 max-w-[90%] sm:max-w-xl"
         >
           We’re bridging the distance between people seeking work and the
-          workplaces that need them. Hello h.
+          workplaces that need them.
 
         </motion.p>
 
