@@ -7,7 +7,9 @@ const nextConfig: NextConfig = {
   images: {
     unoptimized: true,
   },
-  // Removed: output: "export"
+
+  // 🔥 THIS IS THE CORRECT WAY (inside the config object)
+  output: "standalone",
 };
 
 export default nextConfig;
