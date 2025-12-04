@@ -2,7 +2,7 @@ name: Deploy Next.js to Production
 
 on:
   push:
-    branches: [ "main" ]
+    branches: ["main"]
 
 jobs:
   build:
@@ -12,7 +12,7 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v3
 
-      - name: Setup Node.js
+      - name: Setup Node
         uses: actions/setup-node@v3
         with:
           node-version: 18
@@ -20,42 +20,35 @@ jobs:
       - name: Install dependencies
         run: npm install
 
-      - name: Build Next.js project
+      - name: Build project
         run: npm run build
 
       - name: Prepare Release Folder
         run: |
           rm -rf release
-          mkdir release
-          cp -r .next release/.next
-          cp -r public release/public
-          cp -r src release/src
-          cp package.json release/
-          cp package-lock.json release/
-          cp next.config.ts release/
-          cp ecosystem.config.js release/
-          cp server.js release/
-          cp start.sh release/
-          chmod +x release/start.sh
+          mkdir -p release
+          cp -r .next public start.sh server.js package.json package-lock.json release/
 
-      - name: Upload Release to Server
+      - name: Upload to Server via SCP
         uses: appleboy/scp-action@v0.1.7
         with:
-          host: ${{ secrets.HOST }}
-          username: ${{ secrets.USERNAME }}
-          key: ${{ secrets.SSH_KEY }}
+          host: ${{ secrets.DEPLOY_HOST }}
+          username: ${{ secrets.DEPLOY_USERNAME }}
+          key: ${{ secrets.SSH_PRIVATE_KEY }}
           source: "release/*"
           target: "/home/rojgariindia.com/app"
 
-      - name: Restart PM2 on Server
+      - name: SSH Deploy
         uses: appleboy/ssh-action@v1.0.0
         with:
           host: ${{ secrets.DEPLOY_HOST }}
           username: ${{ secrets.DEPLOY_USERNAME }}
           key: ${{ secrets.SSH_PRIVATE_KEY }}
-
           script: |
             cd /home/rojgariindia.com/app
+            mv release/* .
+            rm -rf release
+
             npm install --omit=dev
-            pm2 restart start.sh --name rojgari-next || pm2 start start.sh --name rojgari-next
-            pm2 save
+
+            pm2 reload rojgari-next || pm2 start start.sh --name rojgari-next
