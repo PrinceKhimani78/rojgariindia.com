@@ -1,65 +1,22 @@
-name: Deploy Next.js
+- name: Run Deploy Script
+  uses: appleboy/ssh-action@v1.0.3
+  with:
+    host: ${{ secrets.DEPLOY_HOST }}
+    username: ${{ secrets.DEPLOY_USERNAME }}
+    key: ${{ secrets.SSH_PRIVATE_KEY }}
+    script: |
+      echo "Starting Deployment..."
 
-on:
-  push:
-    branches: ["main"]
+      cd /home/rojgariindia.com/app/release
 
-jobs:
-  build:
-    runs-on: ubuntu-latest
+      npm install --omit=dev
 
-    steps:
-      - name: Checkout Repo
-        uses: actions/checkout@v4
+      if pm2 list | grep -q "rojgari-next"; then
+        pm2 reload rojgari-next --update-env
+      else
+        pm2 start ./start.sh --name rojgari-next --interpreter bash
+      fi
 
-      - name: Setup Node
-        uses: actions/setup-node@v4
-        with:
-          node-version: 20
-          cache: npm
-
-      - name: Install Dependencies
-        run: npm ci
-
-      - name: Build Next.js
-        run: npm run build
-
-      - name: Prepare release folder
-        run: |
-          rm -rf release
-          mkdir release
-          cp -r .next package.json package-lock.json public server.js start.sh release/
-
-      - name: Upload to server
-        uses: appleboy/scp-action@v0.1.7
-        with:
-          host: ${{ secrets.DEPLOY_HOST }}
-          username: ${{ secrets.DEPLOY_USERNAME }}
-          key: ${{ secrets.SSH_PRIVATE_KEY }}
-          source: "release/*"
-          target: "/home/rojgariindia.com/app/release"
-          overwrite: true
-
-      - name: Run Deploy Script
-        uses: appleboy/ssh-action@v1.0.3
-        with:
-          host: ${{ secrets.DEPLOY_HOST }}
-          username: ${{ secrets.DEPLOY_USERNAME }}
-          key: ${{ secrets.SSH_PRIVATE_KEY }}
-          script: |
-            echo "🚀 Starting Deployment..."
-
-            cd /home/rojgariindia.com/app/release
-
-            npm install --omit=dev
-
-            if pm2 list | grep -q "rojgari-next"; then
-              pm2 reload rojgari-next --update-env
-            else
-              pm2 start ./start.sh --name rojgari-next --interpreter bash
-            fi
-
-            pm2 save
-            sudo systemctl restart lsws
-
-            echo "🎉 Deployment Done!"
+      pm2 save
+      sudo systemctl restart lsws
+      echo "Deployment Done!"
