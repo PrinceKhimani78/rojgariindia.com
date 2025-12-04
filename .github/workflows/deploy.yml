@@ -9,67 +9,81 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      # 1. Checkout Code
-      - name: Checkout Repository
-        uses: actions/checkout@v4
+    # 1. Checkout Code
+    - name: Checkout Repository
+      uses: actions/checkout@v4
 
-      # 2. Setup Node
-      - name: Setup Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: 20
-          cache: "npm"
+    # 2. Setup Node
+    - name: Setup Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: 20
+        cache: "npm"
 
-      # 3. Install dependencies
-      - name: Install dependencies
-        run: npm ci
+    # 3. Install dependencies
+    - name: Install dependencies
+      run: npm ci
 
-      # 4. Build Next.js App
-      - name: Build Next.js App
-        run: npm run build
+    # 4. Build Next.js App
+    - name: Build Next.js App
+      run: npm run build
 
-      # 5. Prepare Release Folder
-      - name: Prepare Release Folder
-        run: |
-          rm -rf release
-          mkdir -p release
-          cp -r .next public start.sh server.js package.json package-lock.json release/
-          chmod +x release/start.sh
+    # 5. Prepare Release Folder
+    - name: Prepare Release Folder
+      run: |
+        rm -rf release
+        mkdir release
+        cp -r .next release/.next
+        cp -r public release/public
+        cp start.sh release/start.sh
+        cp server.js release/server.js
+        cp package.json release/package.json
+        cp package-lock.json release/package-lock.json
+        chmod +x release/start.sh
 
-      # 6. Upload Release to Server
-      - name: Upload Release to Server
-        uses: appleboy/scp-action@v0.1.7
-        with:
-          host: ${{ secrets.DEPLOY_HOST }}
-          username: ${{ secrets.DEPLOY_USERNAME }}
-          key: ${{ secrets.SSH_PRIVATE_KEY }}
-          port: 22
-          source: "release/*"
-          target: "/home/rojgariindia.com/app"
+    # 6. Clean server app folder
+    - name: Clean server app folder
+      uses: appleboy/ssh-action@v1.0.3
+      with:
+        host: ${{ secrets.DEPLOY_HOST }}
+        username: ${{ secrets.DEPLOY_USERNAME }}
+        key: ${{ secrets.SSH_PRIVATE_KEY }}
+        port: 22
+        script: |
+          rm -rf /home/rojgariindia.com/app/*
 
-      # 7. Restart App on Server
-      - name: Deploy on Server
-        uses: appleboy/ssh-action@v1.0.3
-        with:
-          host: ${{ secrets.DEPLOY_HOST }}
-          username: ${{ secrets.DEPLOY_USERNAME }}
-          key: ${{ secrets.SSH_PRIVATE_KEY }}
-          port: 22
-          script: |
-            echo "Starting Deployment..."
+    # 7. Upload Release to Server
+    - name: Upload Release to Server
+      uses: appleboy/scp-action@v0.1.7
+      with:
+        host: ${{ secrets.DEPLOY_HOST }}
+        username: ${{ secrets.DEPLOY_USERNAME }}
+        key: ${{ secrets.SSH_PRIVATE_KEY }}
+        port: 22
+        source: "release/**"
+        target: "/home/rojgariindia.com/app/"
 
-            cd /home/rojgariindia.com/app
+    # 8. Deploy on Server
+    - name: Deploy on Server
+      uses: appleboy/ssh-action@v1.0.3
+      with:
+        host: ${{ secrets.DEPLOY_HOST }}
+        username: ${{ secrets.DEPLOY_USERNAME }}
+        key: ${{ secrets.SSH_PRIVATE_KEY }}
+        port: 22
+        script: |
+          echo "Starting Deployment..."
 
-            npm install --omit=dev
+          cd /home/rojgariindia.com/app
+          npm install --omit=dev
 
-            if pm2 list | grep -q "rojgari-next"; then
-              echo "Reloading existing PM2 app..."
-              pm2 reload rojgari-next --update-env
-            else
-              echo "Starting new PM2 app..."
-              pm2 start ./start.sh --name rojgari-next --interpreter bash
-            fi
+          if pm2 list | grep -q "rojgari-next"; then
+            pm2 reload rojgari-next --update-env
+          else
+            pm2 start ./start.sh --name rojgari-next --interpreter bash
+          fi
 
-            pm2 save
-            sudo systemctl restart lsws
-            echo "Deployment Done!"
+          pm2 save
+          sudo systemctl restart lsws
+
+          echo "Deployment Done!"
