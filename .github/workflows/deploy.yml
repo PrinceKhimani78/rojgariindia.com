@@ -32,27 +32,11 @@ jobs:
     - name: Prepare Release Folder
       run: |
         rm -rf release
-        mkdir release
-        cp -r .next release/.next
-        cp -r public release/public
-        cp start.sh release/start.sh
-        cp server.js release/server.js
-        cp package.json release/package.json
-        cp package-lock.json release/package-lock.json
+        mkdir -p release
+        cp -r .next public start.sh server.js package.json package-lock.json release/
         chmod +x release/start.sh
 
-    # 6. Clean server app folder
-    - name: Clean server app folder
-      uses: appleboy/ssh-action@v1.0.3
-      with:
-        host: ${{ secrets.DEPLOY_HOST }}
-        username: ${{ secrets.DEPLOY_USERNAME }}
-        key: ${{ secrets.SSH_PRIVATE_KEY }}
-        port: 22
-        script: |
-          rm -rf /home/rojgariindia.com/app/*
-
-    # 7. Upload Release to Server
+    # 6. Upload Release to Server
     - name: Upload Release to Server
       uses: appleboy/scp-action@v0.1.7
       with:
@@ -60,10 +44,10 @@ jobs:
         username: ${{ secrets.DEPLOY_USERNAME }}
         key: ${{ secrets.SSH_PRIVATE_KEY }}
         port: 22
-        source: "release/**"
-        target: "/home/rojgariindia.com/app/"
+        source: "release/*"
+        target: "/home/rojgariindia.com/app/release"
 
-    # 8. Deploy on Server
+    # 7. Restart App on Server
     - name: Deploy on Server
       uses: appleboy/ssh-action@v1.0.3
       with:
@@ -74,13 +58,19 @@ jobs:
         script: |
           echo "Starting Deployment..."
 
-          cd /home/rojgariindia.com/app
+          APP_PATH="/home/rojgariindia.com/app/release"
+
+          cd $APP_PATH
+
+          echo "Installing production dependencies..."
           npm install --omit=dev
 
           if pm2 list | grep -q "rojgari-next"; then
+            echo "Reloading existing PM2 app..."
             pm2 reload rojgari-next --update-env
           else
-            pm2 start ./start.sh --name rojgari-next --interpreter bash
+            echo "Starting new PM2 app..."
+            pm2 start $APP_PATH/start.sh --name rojgari-next --interpreter bash
           fi
 
           pm2 save
