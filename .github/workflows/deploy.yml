@@ -1,48 +1,3 @@
-name: Deploy Next.js to Production
-
-on:
-  push:
-    branches:
-      - main
-
-jobs:
-  build:
-    runs-on: ubuntu-latest
-
-    steps:
-      - name: Checkout Repo
-        uses: actions/checkout@v4
-
-      - name: Setup Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: 20
-          cache: npm
-
-      - name: Install Dependencies
-        run: npm ci
-
-      - name: Build Next.js
-        run: npm run build
-
-      - name: Create Release Tarball
-        run: |
-          mkdir -p release
-          cp -r .next public start.sh server.js package.json package-lock.json release/
-          cd release
-          tar -czf ../release.tar.gz .
-          cd ..
-
-      - name: Upload Tarball to Server
-        uses: appleboy/scp-action@v0.1.7
-        with:
-          host: ${{ secrets.DEPLOY_HOST }}
-          username: ${{ secrets.DEPLOY_USERNAME }}
-          key: ${{ secrets.SSH_PRIVATE_KEY }}
-          port: 22
-          source: release.tar.gz
-          target: /home/rojgariindia.com/app/
-
       - name: Deploy on Server
         uses: appleboy/ssh-action@v1.0.3
         with:
@@ -55,6 +10,11 @@ jobs:
           script: |
             set -e
 
+            export CI=true
+            export NPM_CONFIG_PROGRESS=false
+            export NPM_CONFIG_SPIN=false
+            export NPM_CONFIG_LOGLEVEL=error
+
             cd /home/rojgariindia.com/app
 
             echo ">>> Extracting new release"
@@ -63,10 +23,10 @@ jobs:
             rm release.tar.gz
 
             echo ">>> Installing production dependencies"
-            npm install --omit=dev
+            npm install --omit=dev --no-progress --silent
 
-            echo ">>> Reloading PM2 app (zero-downtime)"
-            pm2 reload rojgari-next --update-env || \
+            echo ">>> Restarting PM2 app (CI-safe)"
+            pm2 restart rojgari-next --update-env || \
             pm2 start start.sh --name rojgari-next --interpreter bash
 
             pm2 save
