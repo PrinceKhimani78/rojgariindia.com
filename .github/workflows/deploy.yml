@@ -17,8 +17,22 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: 20
+          cache: npm
 
-      - name: Upload release tarball
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Build Next.js
+        run: npm run build
+
+      - name: Create release tarball
+        run: |
+          mkdir -p release
+          cp -r .next public start.sh server.js package.json package-lock.json release/
+          tar -czf release.tar.gz -C release .
+          rm -rf release
+
+      - name: Upload release to server
         uses: appleboy/scp-action@v0.1.7
         with:
           host: ${{ secrets.DEPLOY_HOST }}
@@ -28,7 +42,7 @@ jobs:
           source: "release.tar.gz"
           target: "/home/rojgariindia.com/app/"
 
-      - name: Deploy on Server
+      - name: Deploy on server
         uses: appleboy/ssh-action@v1.0.3
         with:
           host: ${{ secrets.DEPLOY_HOST }}
@@ -50,11 +64,8 @@ jobs:
             echo ">>> Installing production dependencies"
             npm install --omit=dev --no-progress --silent
 
-            echo ">>> Restarting PM2 app"
+            echo ">>> Restarting PM2"
             pm2 reload rojgari-next --update-env || \
             pm2 start start.sh --name rojgari-next --interpreter bash
 
             pm2 save --force
-
-            echo ">>> Deployment finished"
-            exit 0
