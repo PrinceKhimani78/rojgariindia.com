@@ -50,29 +50,23 @@ jobs:
           username: ${{ secrets.DEPLOY_USERNAME }}
           key: ${{ secrets.SSH_PRIVATE_KEY }}
           port: 22
-          command_timeout: 30m
+          command_timeout: 15m
           request_pty: true
           script: |
             set -e
 
             cd /home/rojgariindia.com/app
 
-            echo ">>> Stopping existing PM2 app"
-            pm2 stop rojgari-next || true
-            pm2 delete rojgari-next || true
-
-            echo ">>> Cleaning old build"
-            rm -rf .next public
-
             echo ">>> Extracting new release"
+            rm -rf .next public
             tar -xzf release.tar.gz
             rm release.tar.gz
 
             echo ">>> Installing production dependencies"
             npm install --omit=dev
 
-            echo ">>> Starting app via start.sh"
-            chmod +x start.sh
+            echo ">>> Reloading PM2 app (zero-downtime)"
+            pm2 reload rojgari-next --update-env || \
             pm2 start start.sh --name rojgari-next --interpreter bash
 
             pm2 save
