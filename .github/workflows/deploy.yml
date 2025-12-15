@@ -10,37 +10,23 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      - name: Checkout Repo
+      - name: Checkout repository
         uses: actions/checkout@v4
 
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
           node-version: 20
-          cache: npm
 
-      - name: Install Dependencies
-        run: npm ci
-
-      - name: Build Next.js
-        run: npm run build
-
-      - name: Create Release Tarball
-        run: |
-          rm -rf release release.tar.gz
-          mkdir release
-          cp -r .next public start.sh server.js package.json package-lock.json release/
-          tar -czf release.tar.gz -C release .
-
-      - name: Upload Tarball to Server
+      - name: Upload release tarball
         uses: appleboy/scp-action@v0.1.7
         with:
           host: ${{ secrets.DEPLOY_HOST }}
           username: ${{ secrets.DEPLOY_USERNAME }}
           key: ${{ secrets.SSH_PRIVATE_KEY }}
           port: 22
-          source: release.tar.gz
-          target: /home/rojgariindia.com/app/
+          source: "release.tar.gz"
+          target: "/home/rojgariindia.com/app/"
 
       - name: Deploy on Server
         uses: appleboy/ssh-action@v1.0.3
@@ -49,14 +35,10 @@ jobs:
           username: ${{ secrets.DEPLOY_USERNAME }}
           key: ${{ secrets.SSH_PRIVATE_KEY }}
           port: 22
-          command_timeout: 15m
-          request_pty: true
+          command_timeout: 10m
+          request_pty: false
           script: |
             set -e
-            export CI=true
-            export NPM_CONFIG_PROGRESS=false
-            export NPM_CONFIG_SPIN=false
-            export NPM_CONFIG_LOGLEVEL=error
 
             cd /home/rojgariindia.com/app
 
@@ -69,7 +51,10 @@ jobs:
             npm install --omit=dev --no-progress --silent
 
             echo ">>> Restarting PM2 app"
-            pm2 restart rojgari-next --update-env || \
+            pm2 reload rojgari-next --update-env || \
             pm2 start start.sh --name rojgari-next --interpreter bash
 
-            pm2 save
+            pm2 save --force
+
+            echo ">>> Deployment finished"
+            exit 0
