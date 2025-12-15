@@ -1,114 +1,61 @@
+import { db } from "@/lib/db";
 import { NextResponse } from "next/server";
-import mysql from "mysql2/promise";
 
 export async function POST(req: Request) {
   try {
     const body = await req.json();
+    console.log("RESUME BODY:", body);
 
-    const connection = await mysql.createConnection({
-      host: process.env.DB_HOST,
-      user: process.env.DB_USER,
-      password: process.env.DB_PASS,
-      database: process.env.DB_NAME,
-    });
+    const f = body;
+    // 🔍 CHECK FOR DUPLICATE NAME + SURNAME
+    const [existing]: any = await db.execute(
+      "SELECT id FROM resumes WHERE firstName = ? AND surName = ? LIMIT 1",
+      [f.firstName, f.surName]
+    );
 
-    const f = body.form; // short alias
-
-    // Insert main resume
-    const [result]: any = await connection.execute(
-      `INSERT INTO resumes (
-        firstName, surName, email, phone,
-        state, district, city, village,
-        address, summary,
-        availabilityCategory, availabilityState, availabilityDistrict,
-        availabilityCity, availabilityVillage,
-        joiningDate, availabilityJobCategory,
-        expectedSalaryRange, additionalInfo,
-        photoUrl
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+    if (existing.length > 0) {
+      return NextResponse.json(
+        { success: false, message: "Name + Surname already exists" },
+        { status: 400 }
+      );
+    }
+    await db.execute(
+      `INSERT INTO resumes 
+        (firstName, surName, email, phone, state, district, city, village, address, summary,
+ workType, joiningDate, availabilityCategory, availabilityState, availabilityDistrict,
+ availabilityCity, availabilityVillage, availabilityJobCategory, expectedSalaryRange, additionalInfo,
+ photoUrl)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?,?)`,
       [
-        f.firstName || null,
-        f.surName || null,
-        f.email || null,
-        f.phone || null,
-
-        f.state || null,
-        f.district || null,
-        f.city || null,
-        f.village || null,
-
-        f.address || null,
-        f.summary || null,
-
-        f.availabilityCategory || null,
-        f.availabilityState || null,
-        f.availabilityDistrict || null,
-        f.availabilityCity || null,
-        f.availabilityVillage || null,
-
-        f.joiningDate || null,
-        f.availabilityJobCategory || null,
-        f.expectedSalaryRange || null,
-        f.additionalInfo || null,
-
-        f.photoUrl || null,
+        f.firstName,
+        f.surName,
+        f.email,
+        f.phone,
+        f.state,
+        f.district,
+        f.city,
+        f.village,
+        f.address,
+        f.summary,
+        f.workType,
+        f.joiningDate,
+        f.availabilityCategory,
+        f.availabilityState,
+        f.availabilityDistrict,
+        f.availabilityCity,
+        f.availabilityVillage,
+        f.availabilityJobCategory,
+        f.expectedSalaryRange,
+        f.additionalInfo,
+        f.photoUrl,
       ]
     );
 
-    const resumeId = result.insertId;
-
-    // Insert experience
-    for (const exp of body.experiences) {
-      await connection.execute(
-        `INSERT INTO resume_experience (
-          resume_id, position, company, noticePeriod,
-          startDate, endDate, stillWorkingDate
-        ) VALUES (?, ?, ?, ?, ?, ?, ?)`,
-        [
-          resumeId,
-          exp.position || null,
-          exp.company || null,
-          exp.noticePeriod || null,
-          exp.startDate || null,
-          exp.endDate || null,
-          exp.stillWorkingDate || null,
-        ]
-      );
-    }
-
-    // Insert education
-    for (const edu of body.educationList) {
-      await connection.execute(
-        `INSERT INTO resume_education (
-          resume_id, degree, university, passingYear
-        ) VALUES (?, ?, ?, ?)`,
-        [
-          resumeId,
-          edu.degree || null,
-          edu.university || null,
-          edu.passingYear || null,
-        ]
-      );
-    }
-
-    // Insert skills
-    for (const skill of body.skillsList) {
-      await connection.execute(
-        `INSERT INTO resume_skills (
-          resume_id, name, level, years
-        ) VALUES (?, ?, ?, ?)`,
-        [resumeId, skill.name || null, skill.level || null, skill.years || null]
-      );
-    }
-
-    return NextResponse.json({
-      success: true,
-      message: "Resume stored successfully",
-    });
+    return NextResponse.json({ success: true });
   } catch (err: any) {
-    console.error("RESUME INSERT ERROR:", err);
+    console.error("🔥 MYSQL ERROR:", err?.message || err);
     return NextResponse.json(
-      { success: false, error: err.message },
+      { success: false, error: err?.message || err },
       { status: 500 }
     );
   }

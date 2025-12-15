@@ -102,7 +102,7 @@ export default function ComingSoon() {
             playsInline
             className="absolute inset-0 w-full object-cover  animate-[slowZoom_40s_linear_infinite_alternate] h-screen"
           >
-            <source src="/bg-video.mp4" type="video/mp4" />
+            <source src="/images/bg-video.webm" type="video/mp4" />
           </video>
         )}
       </div>
@@ -228,7 +228,7 @@ export default function ComingSoon() {
           >
             {isSubscribed ? (
               <>
-                <span>Subscribed</span>
+                <span>Subscribed!!</span>
                 <SuccessAnim />
               </>
             ) : (
@@ -249,7 +249,7 @@ export default function ComingSoon() {
             >
               <FaCheckCircle className="text-[#FFD633] text-lg sm:text-2xl" />
               <p className="font-medium text-sm sm:text-base">
-                Subscribed successfully!
+                Subscribed successfully!!!
               </p>
             </motion.div>
           )}
@@ -263,8 +263,7 @@ export default function ComingSoon() {
           className="fontAL text-sm sm:text-base text-[#000000] mt-15 sm:mt-15 max-w-[90%] sm:max-w-xl"
         >
           We’re bridging the distance between people seeking work and the
-          workplaces that need them Hi.
-
+          workplaces that need them...
         </motion.p>
 
         {/* Social Icons */}
