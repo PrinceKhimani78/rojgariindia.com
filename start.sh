@@ -4,9 +4,5 @@ set -e
 export NODE_ENV=production
 export PORT=3020
 
-APP_DIR="/home/rojgariindia.com/app"
-cd "$APP_DIR"
-
-echo ">>> Starting rojgariindia.com Next.js on port $PORT"
-
-exec node server.js
+cd /home/rojgariindia.com/app
+exec npx next start -p 3020
