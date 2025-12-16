@@ -1,12 +1,8 @@
 #!/bin/bash
-APP_DIR="/home/rojgariindia.com/app"
+set -e
 
-cd $APP_DIR
+export NODE_ENV=production
+export PORT=3020
 
-# Load env variables if exist
-if [ -f .env.local ]; then
-  export $(grep -v '^#' .env.local | xargs)
-fi
-
-echo ">>> Starting rojgariindia.com Next.js on port 3010"
-exec npm start -- -p 3010 -H 0.0.0.0
+cd /home/rojgariindia.com/app
+exec npx next start -p 3020

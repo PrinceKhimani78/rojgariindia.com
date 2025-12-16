@@ -1,16 +1,14 @@
 const { createServer } = require("http");
 const next = require("next");
 
-const port = 3010;
-const dev = false;
-const app = next({ dev });
+const app = next({ dev: false });
 const handle = app.getRequestHandler();
 
+const PORT = 3020;
+
 app.prepare().then(() => {
-  createServer((req, res) => {
-    handle(req, res);
-  }).listen(port, "0.0.0.0", (err) => {
-    if (err) throw err;
-    console.log(`>>> Next.js app running on port ${port}`);
-  });
+  createServer((req, res) => handle(req, res))
+    .listen(PORT, "127.0.0.1", () => {
+      console.log(`> Ready on http://127.0.0.1:${PORT}`);
+    });
 });
