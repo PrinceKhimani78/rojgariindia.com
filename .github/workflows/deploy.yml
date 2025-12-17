@@ -10,30 +10,36 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      - uses: actions/checkout@v4
+      - name: Checkout
+        uses: actions/checkout@v4
 
-      - uses: actions/setup-node@v4
+      - name: Setup Node
+        uses: actions/setup-node@v4
         with:
           node-version: 20
           cache: npm
 
-      - run: npm ci
-      - run: npm run build
+      - name: Install deps
+        run: npm ci
+
+      - name: Build
+        run: npm run build
 
       - name: Prepare release
         run: |
           rm -rf release
           mkdir release
-
-          cp -r .next/standalone release/
-          cp -r .next/static release/.next/
-          cp -r public release/
-          cp package.json package-lock.json start.sh release/
-
+          cp -r \
+            .next/standalone \
+            .next/static \
+            public \
+            package.json \
+            start.sh \
+            release/
           tar -czf release.tar.gz -C release .
           rm -rf release
 
-      - name: Upload to server
+      - name: Upload release
         uses: appleboy/scp-action@v0.1.7
         with:
           host: ${{ secrets.DEPLOY_HOST }}
@@ -42,7 +48,7 @@ jobs:
           source: "release.tar.gz"
           target: "/home/rojgariindia.com/app/"
 
-      - name: Deploy
+      - name: Deploy & Restart
         uses: appleboy/ssh-action@v1.0.3
         with:
           host: ${{ secrets.DEPLOY_HOST }}
@@ -57,7 +63,7 @@ jobs:
             tar -xzf release.tar.gz
             rm release.tar.gz
 
-            npm install --omit=dev --no-audit --no-fund
+            chmod +x start.sh
 
             pm2 delete rojgari-main || true
             pm2 start start.sh --name rojgari-main
