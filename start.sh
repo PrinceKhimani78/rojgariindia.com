@@ -3,8 +3,8 @@ set -e
 
 export NODE_ENV=production
 export PORT=3020
-export HOSTNAME=0.0.0.0
 
 cd /home/rojgariindia.com/app
 
-exec node .next/standalone/server.js
+# Standalone entry (NOT next start)
+exec node server.js

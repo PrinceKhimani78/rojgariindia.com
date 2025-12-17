@@ -19,7 +19,7 @@ jobs:
           node-version: 20
           cache: npm
 
-      - name: Install dependencies
+      - name: Install deps
         run: npm ci
 
       - name: Build
@@ -29,20 +29,25 @@ jobs:
         run: |
           rm -rf release
           mkdir release
-          cp -r .next public package.json package-lock.json start.sh release/
+
+          cp -r .next/standalone/* release/
+          cp -r .next/static release/.next/static
+          cp -r public release/
+          cp package.json package-lock.json start.sh release/
+
           tar -czf release.tar.gz -C release .
           rm -rf release
 
-      - name: Upload release
+      - name: Upload to server
         uses: appleboy/scp-action@v0.1.7
         with:
           host: ${{ secrets.DEPLOY_HOST }}
           username: ${{ secrets.DEPLOY_USERNAME }}
           key: ${{ secrets.SSH_PRIVATE_KEY }}
-          source: release.tar.gz
-          target: /home/rojgariindia.com/app/
+          source: "release.tar.gz"
+          target: "/home/rojgariindia.com/app/"
 
-      - name: Deploy on server
+      - name: Deploy & Restart PM2
         uses: appleboy/ssh-action@v1.0.3
         with:
           host: ${{ secrets.DEPLOY_HOST }}
@@ -51,19 +56,15 @@ jobs:
           command_timeout: 10m
           script: |
             set -e
-
             cd /home/rojgariindia.com/app
 
-            echo "Cleaning old build"
-            rm -rf .next public
-
-            echo "Extracting new build"
+            rm -rf .next public node_modules server.js
             tar -xzf release.tar.gz
             rm release.tar.gz
 
+            npm install --omit=dev --no-audit --no-fund
             chmod +x start.sh
 
-            echo "Restarting PM2"
             pm2 delete rojgari-main || true
             pm2 start start.sh --name rojgari-main
             pm2 save --force
