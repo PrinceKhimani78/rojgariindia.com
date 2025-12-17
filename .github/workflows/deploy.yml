@@ -22,7 +22,7 @@ jobs:
       - name: Install deps
         run: npm ci
 
-      - name: Build
+      - name: Build (standalone)
         run: npm run build
 
       - name: Prepare release
@@ -30,15 +30,17 @@ jobs:
           rm -rf release
           mkdir release
 
+          # Standalone output
           cp -r .next/standalone/* release/
-          cp -r .next/static release/.next/static
-          cp -r public release/
-          cp package.json package-lock.json start.sh release/
+          cp -r .next/static release/.next/
+          cp -r public release/ || true
+
+          cp package.json start.sh release/
 
           tar -czf release.tar.gz -C release .
           rm -rf release
 
-      - name: Upload to server
+      - name: Upload release
         uses: appleboy/scp-action@v0.1.7
         with:
           host: ${{ secrets.DEPLOY_HOST }}
@@ -47,7 +49,7 @@ jobs:
           source: "release.tar.gz"
           target: "/home/rojgariindia.com/app/"
 
-      - name: Deploy & Restart PM2
+      - name: Deploy & restart
         uses: appleboy/ssh-action@v1.0.3
         with:
           host: ${{ secrets.DEPLOY_HOST }}
@@ -58,11 +60,10 @@ jobs:
             set -e
             cd /home/rojgariindia.com/app
 
-            rm -rf .next public node_modules server.js
+            rm -rf .next public server.js
             tar -xzf release.tar.gz
             rm release.tar.gz
 
-            npm install --omit=dev --no-audit --no-fund
             chmod +x start.sh
 
             pm2 delete rojgari-main || true
