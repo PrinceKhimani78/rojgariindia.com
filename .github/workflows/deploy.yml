@@ -10,70 +10,55 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      - name: Checkout repository
-        uses: actions/checkout@v4
+      - uses: actions/checkout@v4
 
-      - name: Setup Node.js
-        uses: actions/setup-node@v4
+      - uses: actions/setup-node@v4
         with:
           node-version: 20
-          cache: npm
 
-      - name: Install dependencies
-        run: npm ci
+      - run: npm ci
+      - run: npm run build
 
-      - name: Build Next.js
-        run: npm run build
-
-      - name: Prepare release bundle
+      # ✅ Prepare standalone bundle
+      - name: Prepare release
         run: |
           rm -rf release
-          mkdir release
-          cp -r .next public package.json package-lock.json start.sh server.js release/
+          mkdir -p release
+          cp -r .next/standalone/* release/
+          cp -r .next/static release/.next/
+          cp -r public release/ || true
+          cp package.json package-lock.json start.sh release/
+
           tar -czf release.tar.gz -C release .
-          rm -rf release
 
-      - name: Upload release to server
-        uses: appleboy/scp-action@v0.1.7
-        with:
-          host: ${{ secrets.DEPLOY_HOST }}
-          username: ${{ secrets.DEPLOY_USERNAME }}
-          key: ${{ secrets.SSH_PRIVATE_KEY }}
-          port: 22
-          source: "release.tar.gz"
-          target: "/home/rojgariindia.com/app/"
+      # ✅ Upload safely (no drone-scp bugs)
+      - name: Upload via rsync
+        env:
+          SSH_PRIVATE_KEY: ${{ secrets.SSH_PRIVATE_KEY }}
+        run: |
+          echo "$SSH_PRIVATE_KEY" > key.pem
+          chmod 600 key.pem
 
+          rsync -avz \
+            -e "ssh -i key.pem -o StrictHostKeyChecking=no" \
+            release.tar.gz \
+            ${{ secrets.DEPLOY_USERNAME }}@${{ secrets.DEPLOY_HOST }}:/home/rojgariindia.com/app/
+
+      # ✅ Deploy & restart
       - name: Deploy on server
-        uses: appleboy/ssh-action@v1.0.3
-        with:
-          host: ${{ secrets.DEPLOY_HOST }}
-          username: ${{ secrets.DEPLOY_USERNAME }}
-          key: ${{ secrets.SSH_PRIVATE_KEY }}
-          port: 22
-          command_timeout: 10m
-          script: |
+        run: |
+          ssh -i key.pem -o StrictHostKeyChecking=no \
+          ${{ secrets.DEPLOY_USERNAME }}@${{ secrets.DEPLOY_HOST }} << 'EOF'
             set -e
+            cd /home/rojgariindia.com/app
 
-            APP_DIR="/home/rojgariindia.com/app"
-            PM2_NAME="rojgari-main"
-
-            cd $APP_DIR
-
-            echo ">>> Cleaning old build"
-            rm -rf .next public
-
-            echo ">>> Extracting release"
+            rm -rf .next node_modules public
             tar -xzf release.tar.gz
             rm release.tar.gz
 
-            echo ">>> Installing prod dependencies"
-            npm install --omit=dev --no-audit --no-fund
+            npm install --omit=dev
 
-            echo ">>> Restarting PM2 safely"
-            if pm2 describe $PM2_NAME >/dev/null 2>&1; then
-              pm2 reload $PM2_NAME --update-env
-            else
-              pm2 start start.sh --name $PM2_NAME
-            fi
-
-            pm2 save --force
+            pm2 delete rojgari-main || true
+            pm2 start start.sh --name rojgari-main
+            pm2 save
+          EOF
