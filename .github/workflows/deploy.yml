@@ -29,25 +29,18 @@ jobs:
         run: |
           rm -rf release
           mkdir release
-
-          # Standalone output
-          cp -r .next/standalone/* release/
-          cp -r .next/static release/.next/static
-          cp -r public release/public
-          cp start.sh release/
-          chmod +x release/start.sh
-
+          cp -r .next public package.json package-lock.json start.sh release/
           tar -czf release.tar.gz -C release .
           rm -rf release
 
-      - name: Upload to server
+      - name: Upload release
         uses: appleboy/scp-action@v0.1.7
         with:
           host: ${{ secrets.DEPLOY_HOST }}
           username: ${{ secrets.DEPLOY_USERNAME }}
           key: ${{ secrets.SSH_PRIVATE_KEY }}
-          source: "release.tar.gz"
-          target: "/home/rojgariindia.com/app/"
+          source: release.tar.gz
+          target: /home/rojgariindia.com/app/
 
       - name: Deploy on server
         uses: appleboy/ssh-action@v1.0.3
@@ -61,14 +54,16 @@ jobs:
 
             cd /home/rojgariindia.com/app
 
-            echo ">>> Cleaning old build"
-            rm -rf .next public server.js
+            echo "Cleaning old build"
+            rm -rf .next public
 
-            echo ">>> Extracting release"
+            echo "Extracting new build"
             tar -xzf release.tar.gz
             rm release.tar.gz
 
-            echo ">>> Restarting PM2"
+            chmod +x start.sh
+
+            echo "Restarting PM2"
             pm2 delete rojgari-main || true
             pm2 start start.sh --name rojgari-main
             pm2 save --force
