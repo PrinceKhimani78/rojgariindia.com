@@ -6,5 +6,5 @@ export PORT=3020
 
 cd /home/rojgariindia.com/app
 
-# Standalone uses node server.js
-exec node server.js
+# ✅ Standalone entry point
+exec node .next/standalone/server.js
