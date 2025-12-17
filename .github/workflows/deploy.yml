@@ -29,14 +29,10 @@ jobs:
         run: |
           rm -rf release
           mkdir release
-
-          # Standalone output
           cp -r .next/standalone/* release/
           cp -r .next/static release/.next/
-          cp -r public release/ || true
-
           cp package.json start.sh release/
-
+          chmod +x release/start.sh
           tar -czf release.tar.gz -C release .
           rm -rf release
 
@@ -49,7 +45,7 @@ jobs:
           source: "release.tar.gz"
           target: "/home/rojgariindia.com/app/"
 
-      - name: Deploy & restart
+      - name: Deploy
         uses: appleboy/ssh-action@v1.0.3
         with:
           host: ${{ secrets.DEPLOY_HOST }}
@@ -60,12 +56,13 @@ jobs:
             set -e
             cd /home/rojgariindia.com/app
 
-            rm -rf .next public server.js
+            pm2 stop rojgari-main || true
+            pm2 delete rojgari-main || true
+
+            rm -rf .next node_modules server.js
+
             tar -xzf release.tar.gz
             rm release.tar.gz
 
-            chmod +x start.sh
-
-            pm2 delete rojgari-main || true
             pm2 start start.sh --name rojgari-main
             pm2 save --force

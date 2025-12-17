@@ -6,4 +6,5 @@ export PORT=3020
 
 cd /home/rojgariindia.com/app
 
+# 🚀 STANDALONE ENTRY (NOT next start)
 exec node server.js
