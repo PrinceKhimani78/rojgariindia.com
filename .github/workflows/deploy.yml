@@ -10,10 +10,10 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      - name: Checkout repository
+      - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Setup Node.js
+      - name: Setup Node
         uses: actions/setup-node@v4
         with:
           node-version: 20
@@ -22,33 +22,32 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
-      - name: Build Next.js
+      - name: Build
         run: npm run build
 
       - name: Prepare release
         run: |
           rm -rf release
           mkdir release
-          cp -r \
-            .next/standalone \
-            .next/static \
-            public \
-            package.json \
-            package-lock.json \
-            start.sh \
-            release/
+
+          # Standalone output
+          cp -r .next/standalone/* release/
+          cp -r .next/static release/.next/static
+          cp -r public release/public
+          cp start.sh release/
+          chmod +x release/start.sh
 
           tar -czf release.tar.gz -C release .
           rm -rf release
 
-      - name: Upload build to server
+      - name: Upload to server
         uses: appleboy/scp-action@v0.1.7
         with:
           host: ${{ secrets.DEPLOY_HOST }}
           username: ${{ secrets.DEPLOY_USERNAME }}
           key: ${{ secrets.SSH_PRIVATE_KEY }}
-          source: release.tar.gz
-          target: /home/rojgariindia.com/app/
+          source: "release.tar.gz"
+          target: "/home/rojgariindia.com/app/"
 
       - name: Deploy on server
         uses: appleboy/ssh-action@v1.0.3
@@ -60,27 +59,16 @@ jobs:
           script: |
             set -e
 
-            APP_DIR="/home/rojgariindia.com/app"
-            PM2_NAME="rojgari-main"
+            cd /home/rojgariindia.com/app
 
-            cd $APP_DIR
+            echo ">>> Cleaning old build"
+            rm -rf .next public server.js
 
-            echo ">>> Stop old app completely"
-            pm2 delete $PM2_NAME || true
-
-            echo ">>> Clean old build"
-            rm -rf .next standalone public
-
-            echo ">>> Extract new build"
+            echo ">>> Extracting release"
             tar -xzf release.tar.gz
             rm release.tar.gz
 
-            chmod +x start.sh
-
-            echo ">>> Install production deps"
-            npm install --omit=dev --no-audit --no-fund
-
-            echo ">>> Start fresh PM2 process"
-            pm2 start start.sh --name $PM2_NAME
-
+            echo ">>> Restarting PM2"
+            pm2 delete rojgari-main || true
+            pm2 start start.sh --name rojgari-main
             pm2 save --force
