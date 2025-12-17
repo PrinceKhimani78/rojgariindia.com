@@ -228,7 +228,7 @@ export default function ComingSoon() {
           >
             {isSubscribed ? (
               <>
-                <span>Subscribed!!!!!</span>
+                <span>Subscribed!</span>
                 <SuccessAnim />
               </>
             ) : (
