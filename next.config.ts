@@ -1,6 +1,8 @@
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
+  reactStrictMode: true,
+
   eslint: {
     ignoreDuringBuilds: true,
   },
@@ -8,8 +10,6 @@ const nextConfig: NextConfig = {
   images: {
     unoptimized: true,
   },
-
-  output: "standalone",
 };
 
 export default nextConfig;

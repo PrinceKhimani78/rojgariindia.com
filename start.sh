@@ -6,5 +6,4 @@ export PORT=3020
 
 cd /home/rojgariindia.com/app
 
-# Standalone server (NOT next start)
-exec node .next/standalone/server.js
+exec ./node_modules/.bin/next start -p 3020
