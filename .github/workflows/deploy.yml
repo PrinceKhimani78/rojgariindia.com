@@ -29,16 +29,26 @@ jobs:
         run: |
           rm -rf release
           mkdir release
-          cp -r .next public package.json package-lock.json start.sh next.config.* release/
+          cp -r \
+            .next/standalone \
+            .next/static \
+            public \
+            package.json \
+            package-lock.json \
+            start.sh \
+            release/
 
-      - name: Upload release
+          tar -czf release.tar.gz -C release .
+          rm -rf release
+
+      - name: Upload build to server
         uses: appleboy/scp-action@v0.1.7
         with:
           host: ${{ secrets.DEPLOY_HOST }}
           username: ${{ secrets.DEPLOY_USERNAME }}
           key: ${{ secrets.SSH_PRIVATE_KEY }}
-          source: "release"
-          target: "/home/rojgariindia.com/app"
+          source: release.tar.gz
+          target: /home/rojgariindia.com/app/
 
       - name: Deploy on server
         uses: appleboy/ssh-action@v1.0.3
@@ -49,10 +59,28 @@ jobs:
           command_timeout: 10m
           script: |
             set -e
-            cd /home/rojgariindia.com/app/release
 
-            npm install --omit=dev
+            APP_DIR="/home/rojgariindia.com/app"
+            PM2_NAME="rojgari-main"
 
-            pm2 delete rojgari-main || true
-            pm2 start start.sh --name rojgari-main
+            cd $APP_DIR
+
+            echo ">>> Stop old app completely"
+            pm2 delete $PM2_NAME || true
+
+            echo ">>> Clean old build"
+            rm -rf .next standalone public
+
+            echo ">>> Extract new build"
+            tar -xzf release.tar.gz
+            rm release.tar.gz
+
+            chmod +x start.sh
+
+            echo ">>> Install production deps"
+            npm install --omit=dev --no-audit --no-fund
+
+            echo ">>> Start fresh PM2 process"
+            pm2 start start.sh --name $PM2_NAME
+
             pm2 save --force
