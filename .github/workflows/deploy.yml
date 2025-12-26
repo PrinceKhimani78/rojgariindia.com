@@ -45,6 +45,11 @@ jobs:
           cp package.json start.sh release/
           chmod +x release/start.sh
 
+          # Copy public static assets so images are available in production
+          if [ -d public ]; then
+            cp -r public release/
+          fi
+
           # Package
           tar -czf release.tar.gz -C release .
           rm -rf release
