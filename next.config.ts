@@ -1,14 +1,9 @@
 import type { NextConfig } from "next";
 
-const nextConfig: NextConfig = {
+const nextConfig = {
   output: "standalone",
-
   images: {
-    unoptimized: true, // 🔥 THIS IS THE KEY FIX
-  },
-
-  eslint: {
-    ignoreDuringBuilds: true,
+    unoptimized: true, // IMPORTANT for VPS + LiteSpeed
   },
 };
 
