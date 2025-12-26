@@ -94,7 +94,6 @@ const ResumePage = () => {
     availabilityJobCategory: "",
     expectedSalaryRange: "",
     additionalInfo: "",
-    photoUrl: "",
   });
 
   const [experiences, setExperiences] = useState<ExperienceEntry[]>([
@@ -117,6 +116,7 @@ const ResumePage = () => {
   ]);
 
   const [photoPreview, setPhotoPreview] = useState<string | null>(null);
+  const [photoFile, setPhotoFile] = useState<File | null>(null); // Store the actual file
 
   useEffect(() => {
     setIsClient(true);
@@ -142,7 +142,11 @@ const ResumePage = () => {
 
     setEmailVerificationLoading(true);
 
-    await fetch("/api/send-otp", {
+    const BACKEND_URL =
+      process.env.NEXT_PUBLIC_BACKEND_API_URL ||
+      "https://api.rojgariindia.com/api";
+
+    await fetch(`${BACKEND_URL}/otp/send-otp`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ email: form.email }),
@@ -150,6 +154,43 @@ const ResumePage = () => {
 
     setEmailVerificationLoading(false);
     setPopupStep("otp");
+  };
+
+  // Validate experience date range
+  const validateExperienceDates = (
+    index: number,
+    startDate: string,
+    endDate: string
+  ) => {
+    console.log(`🔍 Validating dates for experience ${index}:`, {
+      startDate,
+      endDate,
+    });
+
+    // Clear previous error first
+    setErrors((prev) => {
+      const newErrors = { ...prev };
+      delete newErrors[`endDate-${index}`];
+      return newErrors;
+    });
+
+    // Only validate if both dates are provided
+    if (startDate && endDate) {
+      const start = new Date(startDate);
+      const end = new Date(endDate);
+
+      if (end < start) {
+        console.log(
+          `❌ Validation failed: End date (${endDate}) is before start date (${startDate})`
+        );
+        setErrors((prev) => ({
+          ...prev,
+          [`endDate-${index}`]: "End date cannot be before start date",
+        }));
+      } else {
+        console.log(`✅ Validation passed: Dates are in correct order`);
+      }
+    }
   };
 
   const handleChange = useCallback(
@@ -301,8 +342,13 @@ const ResumePage = () => {
   );
 
   const handleOtpVerify = async () => {
-    const res = await fetch("/api/verify-otp", {
+    const BACKEND_URL =
+      process.env.NEXT_PUBLIC_BACKEND_API_URL ||
+      "https://api.rojgariindia.com/api";
+
+    const res = await fetch(`${BACKEND_URL}/otp/verify-otp`, {
       method: "POST",
+      headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ email: form.email, otp }),
     });
 
@@ -318,22 +364,19 @@ const ResumePage = () => {
       const file = e.target.files?.[0];
       if (!file) return;
 
+      console.log("📸 Photo selected:", file.name, file.size, "bytes");
+
+      // Store the file for later upload
+      setPhotoFile(file);
+
+      // Create preview
       const reader = new FileReader();
       reader.onloadend = () => setPhotoPreview(reader.result as string);
       reader.readAsDataURL(file);
 
-      const formData = new FormData();
-      formData.append("photo", file);
-
-      const upload = await fetch("/api/upload-photo", {
-        method: "POST",
-        body: formData,
-      });
-
-      const data = await upload.json();
-      if (data.success) {
-        setForm((prev) => ({ ...prev, photoUrl: data.url }));
-      }
+      console.log(
+        "✅ Photo ready for upload (will upload after profile creation)"
+      );
     },
     []
   );
@@ -366,12 +409,8 @@ const ResumePage = () => {
         return;
       }
 
-      // NORMAL FIELDS
-      const schemaField = resumeSchema.shape[name];
-      if (!schemaField) return;
-
-      z.object({ [name]: schemaField }).parse({ [name]: value });
-
+      // NORMAL FIELDS - Skip for now as we're using discriminated union
+      // Individual field validation is handled by the full form validation
       setErrors((e) => {
         const copy = { ...e };
         delete copy[name];
@@ -388,17 +427,22 @@ const ResumePage = () => {
   };
 
   const validateForm = (payload: any) => {
+    console.log("🔍 Validating form with workType:", payload.workType);
+    console.log("📚 Education entries:", payload.educationList?.length || 0);
+
     const parsed = resumeSchema.safeParse(payload);
 
     // DEBUG LOG: shows EXACT failing fields
     if (!parsed.success) {
       console.log(
-        "ZOD ERROR:",
+        "❌ ZOD VALIDATION ERRORS:",
         parsed.error.issues.map((e) => ({
           path: e.path.join("."),
           message: e.message,
         }))
       );
+    } else {
+      console.log("✅ Form validation passed!");
     }
 
     if (parsed.success) {
@@ -445,6 +489,14 @@ const ResumePage = () => {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
+    console.log("🚀 FORM SUBMIT STARTED");
+    console.log("📝 Form Data:", form);
+    console.log("💼 Work Type:", workType);
+    console.log("📋 Experiences:", experiences);
+    console.log("🎓 Education:", educationList);
+    console.log("⚡ Skills:", skillsList);
+
+    // Validate first
     const payload = {
       ...form,
       phone: normalizeIndianPhone(form.phone),
@@ -454,38 +506,135 @@ const ResumePage = () => {
       skillsList,
     };
 
+    console.log("✅ Validation Payload:", payload);
+
     const isValid = validateForm(payload);
+    console.log("✅ Validation Result:", isValid);
+
     if (!isValid) {
+      console.log("❌ Validation FAILED - scrolling to top");
       window.scrollTo({ top: 0, behavior: "smooth" });
       return;
     }
 
-    console.log("FINAL SUBMIT PAYLOAD:", payload);
+    // Transform to backend API format
+    const apiPayload = {
+      full_name: form.firstName,
+      surname: form.surName,
+      email: form.email,
+      mobile_number: form.phone.replace(/\D/g, "").slice(-10), // Remove +91 and get last 10 digits
+      gender: "Male", // Default gender, you may want to add a gender field to form
+      address: form.address,
+      state: form.state,
+      city: form.city,
+      country: "India",
+      experienced: workType === "experienced",
+      fresher: workType === "fresher",
+      expected_salary: form.expectedSalaryRange,
+      job_category: form.availabilityJobCategory,
+      current_location: `${form.availabilityCity}, ${form.availabilityState}`,
+      interview_availability: form.availabilityCategory,
+      work_experience: experiences.map((exp) => ({
+        position: exp.position,
+        company: exp.company,
+        start_date: exp.startDate,
+        end_date: exp.endDate || null,
+        salary_period: exp.noticePeriod,
+        is_current: !exp.endDate || exp.endDate === "",
+      })),
+      skills: skillsList.map((skill) => ({
+        skill_name: skill.name,
+        years_of_experience: skill.years,
+      })),
+    };
 
-    let data; // <-- Declare ONLY ONCE
-
-    const res = await fetch("/api/resume", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(payload),
-    });
+    console.log("FINAL SUBMIT PAYLOAD:", apiPayload);
 
     try {
-      data = await res.json();
-    } catch {
+      const BACKEND_URL =
+        process.env.NEXT_PUBLIC_BACKEND_API_URL ||
+        "https://api.rojgariindia.com/api";
+
+      console.log("🌐 Backend URL:", BACKEND_URL);
+      console.log(
+        "📤 Sending POST request to:",
+        `${BACKEND_URL}/candidate-profile`
+      );
+
+      // Call backend API
+      const res = await fetch(`${BACKEND_URL}/candidate-profile`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(apiPayload),
+      });
+
+      console.log("📥 Response Status:", res.status);
+      console.log("📥 Response OK:", res.ok);
+
+      let data;
+      try {
+        data = await res.json();
+        console.log("📦 Response Data:", data);
+      } catch {
+        console.error("❌ Failed to parse JSON response");
+        setDuplicateError("Server error. Please try again.");
+        return;
+      }
+
+      // Handle errors
+      if (!res.ok) {
+        console.error("❌ API Error:", data);
+        setDuplicateError(data.message || "Something went wrong");
+        return;
+      }
+
+      // Get candidate ID from response
+      const candidateId = data.data.id;
+      console.log("✅ Profile created with ID:", candidateId);
+      console.log("🎉 SUCCESS! Full response:", data);
+
+      // Upload photo if file was selected
+      if (photoFile) {
+        console.log("📤 Uploading photo to backend...");
+        try {
+          const photoFormData = new FormData();
+          photoFormData.append("profile_photo", photoFile);
+
+          const uploadRes = await fetch(
+            `${BACKEND_URL}/candidate-profile/${candidateId}/upload`,
+            {
+              method: "POST",
+              body: photoFormData,
+            }
+          );
+
+          if (uploadRes.ok) {
+            const uploadData = await uploadRes.json();
+            console.log("✅ Photo uploaded successfully:", uploadData);
+          } else {
+            const errorData = await uploadRes.json();
+            console.warn("⚠️ Photo upload failed:", errorData);
+          }
+        } catch (photoError) {
+          console.error("❌ Photo upload error:", photoError);
+          // Continue even if photo upload fails
+        }
+      } else {
+        console.log("ℹ️ No photo to upload");
+      }
+
+      // Clear error and show success
+      setDuplicateError("");
+      console.log("🎉 ALL DONE! Showing success message");
+      alert(
+        `✅ Profile created successfully for ${form.firstName} ${form.surName}!`
+      );
+    } catch (err: any) {
+      console.error("❌ SUBMISSION ERROR:", err);
+      console.error("❌ Error Message:", err.message);
+      console.error("❌ Error Stack:", err.stack);
       setDuplicateError("Server error. Please try again.");
-      return;
     }
-
-    // Handle duplicate name error
-    if (!res.ok) {
-      setDuplicateError(data.message || "Something went wrong");
-      return;
-    }
-
-    // Clear error on success
-    setDuplicateError("");
-    alert("Submitted successfully!");
   };
 
   const stateOptions = indiaData ? Object.keys(indiaData) : [];
@@ -527,7 +676,7 @@ const ResumePage = () => {
   if (!isClient) return null;
   // console.log("CURRENT ERRORS --->", errors);
   return (
-    <div className="relative min-h-screen w-full flex justify-center px-4 py-10 overflow-x-hidden">
+    <div className="relative min-h-screen w-full flex justify-center px-4 py-10 overflow-x-hidden bg-gray-50">
       <Popup open={showPopup} onClose={() => setShowPopup(false)}>
         <div className="flex flex-col items-center gap-4 mb-4">
           <Image
@@ -560,7 +709,7 @@ const ResumePage = () => {
 
       <Particles className="absolute inset-0 -z-10" />
 
-      <div className="w-full max-w-5xl p-2 overflow-x-hidden">
+      <div className="w-full max-w-5xl p-8 overflow-x-hidden bg-white rounded-2xl shadow-lg">
         <div className="flex justify-center mb-6">
           <Image
             src="/images/logo.svg"
@@ -574,7 +723,7 @@ const ResumePage = () => {
         <h2 className="text-3xl font-bold text-gray-800 text-center mb-8">
           Create Your Rojgari Profile
         </h2>
-        <form onSubmit={handleSubmit} className="space-y-10 text-gray-400">
+        <form onSubmit={handleSubmit} className="space-y-10 text-gray-800">
           {/* Personal Info */}
           <>
             <h3 className="text-lg font-semibold text-gray-800">
@@ -597,14 +746,7 @@ const ResumePage = () => {
                 error={errors.surName}
               />
 
-              <label
-                className="
-                  w-full h-[45px] sm:h-auto bg-white/10
-                  border border-gray-300 rounded-xl 
-                  flex items-center justify-center cursor-pointer text-gray-400 
-                  overflow-hidden row-span-1 md:row-span-3
-                "
-              >
+              <label className="w-full h-[45px] sm:h-auto bg-white/10 border border-gray-300 rounded-xl flex items-center justify-center cursor-pointer text-gray-400 overflow-hidden row-span-1 md:row-span-3">
                 {photoPreview ? (
                   <Image
                     src={photoPreview}
@@ -699,14 +841,7 @@ const ResumePage = () => {
 
                 <label
                   htmlFor="summary"
-                  className="
-      absolute left-4 bg-white px-2 text-gray-400
-      transition-all duration-150 pointer-events-none
-      top-1/2 -translate-y-1/2
-      peer-focus:top-1 peer-focus:-translate-y-1/2 peer-focus:text-sm peer-focus:text-[#72B76A]
-      peer-placeholder-shown:top-1/2 peer-placeholder-shown:-translate-y-1/2 peer-placeholder-shown:text-base
-      peer-not-placeholder-shown:top-1 peer-not-placeholder-shown:-translate-y-1/2 peer-not-placeholder-shown:text-sm peer-not-placeholder-shown:text-gray-400
-    "
+                  className="absolute left-4 bg-white px-2 text-gray-400 transition-all duration-150 pointer-events-none top-1/2 -translate-y-1/2 peer-focus:top-1 peer-focus:-translate-y-1/2 peer-focus:text-sm peer-focus:text-[#72B76A] peer-placeholder-shown:top-1/2 peer-placeholder-shown:-translate-y-1/2 peer-placeholder-shown:text-base peer-not-placeholder-shown:top-1 peer-not-placeholder-shown:-translate-y-1/2 peer-not-placeholder-shown:text-sm peer-not-placeholder-shown:text-gray-400"
                 >
                   Summary
                 </label>
@@ -851,15 +986,22 @@ const ResumePage = () => {
                       label="Start Date"
                       name={`startDate-${index}`}
                       value={exp.startDate}
-                      onChange={(e) =>
+                      onChange={(e) => {
+                        const newStartDate = e.target.value;
                         setExperiences((p) =>
                           p.map((v, i) =>
-                            i === index
-                              ? { ...v, startDate: e.target.value }
-                              : v
+                            i === index ? { ...v, startDate: newStartDate } : v
                           )
-                        )
-                      }
+                        );
+                        // Validate against endDate if it exists
+                        if (exp.endDate) {
+                          validateExperienceDates(
+                            index,
+                            newStartDate,
+                            exp.endDate
+                          );
+                        }
+                      }}
                       error={errors[`startDate-${index}`]}
                     />
 
@@ -867,13 +1009,20 @@ const ResumePage = () => {
                       label="End Date"
                       name={`endDate-${index}`}
                       value={exp.endDate}
-                      onChange={(e) =>
+                      onChange={(e) => {
+                        const newEndDate = e.target.value;
                         setExperiences((prev) =>
                           prev.map((v, i) =>
-                            i === index ? { ...v, endDate: e.target.value } : v
+                            i === index ? { ...v, endDate: newEndDate } : v
                           )
-                        )
-                      }
+                        );
+                        // Validate against startDate in real-time
+                        validateExperienceDates(
+                          index,
+                          exp.startDate,
+                          newEndDate
+                        );
+                      }}
                       error={errors[`endDate-${index}`]}
                     />
 
