@@ -40,3 +40,9 @@ yarn-error.log*
 *.tsbuildinfo
 next-env.d.ts
 release/
+
+# sh file
+*.sh
+
+# yml files
+*.yml
