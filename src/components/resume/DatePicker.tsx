@@ -2,13 +2,21 @@
 
 import { useRef } from "react";
 
-const DatePicker = ({ label, name, value, onChange, error }) => {
+const DatePicker = ({
+  label,
+  name,
+  value,
+  onChange,
+  error,
+  required = false,
+}) => {
   const inputRef = useRef<HTMLInputElement>(null);
 
   return (
     <div className="relative w-full">
       <label className="absolute left-4 top-1 -translate-y-1/2 px-1 bg-white text-sm text-gray-700 pointer-events-none z-10">
         {label}
+        {required && <span className="text-red-500 ml-1">*</span>}
       </label>
 
       <input

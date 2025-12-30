@@ -3,7 +3,6 @@
 import React, { useState, useEffect, useCallback } from "react";
 import Image from "next/image";
 import Particles from "react-tsparticles";
-import { FiMail } from "react-icons/fi";
 import { z } from "zod";
 import BgVideo from "@/components/resume/BgVideo";
 import Popup from "@/components/resume/Popup";
@@ -18,6 +17,8 @@ import {
   skillSchema,
   resumeSchema,
 } from "@/schemas/resumeSchemas";
+import { useGlobalUI } from "@/components/global/GlobalUIProvider";
+
 const phoneRegex = /^(?:\+91[-\s]?)?(?:\d{10}|\d{5}\s?\d{5})$/;
 const normalizeIndianPhone = (input: string) => {
   const digits = input.replace(/\D/g, ""); // remove non-digits
@@ -58,6 +59,7 @@ type ExperienceEntry = {
 const ResumePage = () => {
   const [duplicateError, setDuplicateError] = useState("");
   const [isClient, setIsClient] = useState(false);
+  const { showSnackbar } = useGlobalUI();
   const [workType, setWorkType] = useState<WorkType>("experienced");
   const [indiaData, setIndiaData] = useState<IndiaJson | null>(null);
 
@@ -69,21 +71,25 @@ const ResumePage = () => {
   const [otp, setOtp] = useState("");
   const [isVerified, setIsVerified] = useState(false);
   const [errors, setErrors] = useState<Record<string, string>>({});
+  const [touched, setTouched] = useState<Record<string, boolean>>({});
+  const [formSubmitted, setFormSubmitted] = useState(false);
 
-  const [form, setForm] = useState({
+  // Timers for debounced validation per-field
+  const validateTimers = React.useRef<
+    Record<string, ReturnType<typeof setTimeout> | null>
+  >({});
+
+  const initialForm = {
     firstName: "",
     surName: "",
     email: "",
     phone: "",
-
     state: "",
     district: "",
     city: "",
     village: "",
-
     address: "",
     summary: "",
-
     availabilityCategory: "",
     availabilityState: "",
     availabilityDistrict: "",
@@ -94,7 +100,8 @@ const ResumePage = () => {
     availabilityJobCategory: "",
     expectedSalaryRange: "",
     additionalInfo: "",
-  });
+  };
+  const [form, setForm] = useState(initialForm);
 
   const [experiences, setExperiences] = useState<ExperienceEntry[]>([
     {
@@ -142,9 +149,7 @@ const ResumePage = () => {
 
     setEmailVerificationLoading(true);
 
-    const BACKEND_URL =
-      process.env.NEXT_PUBLIC_BACKEND_API_URL ||
-      "https://api.rojgariindia.com/api";
+    const BACKEND_URL = process.env.NEXT_PUBLIC_BACKEND_API_URL;
 
     await fetch(`${BACKEND_URL}/otp/send-otp`, {
       method: "POST",
@@ -193,158 +198,173 @@ const ResumePage = () => {
     }
   };
 
-  const handleChange = useCallback(
-    (
-      e:
-        | React.ChangeEvent<HTMLInputElement>
-        | React.ChangeEvent<HTMLTextAreaElement>
-        | React.ChangeEvent<HTMLSelectElement>
-    ) => {
-      const { name, value } = e.target;
+  const handleChange = (
+    e:
+      | React.ChangeEvent<HTMLInputElement>
+      | React.ChangeEvent<HTMLTextAreaElement>
+      | React.ChangeEvent<HTMLSelectElement>
+  ) => {
+    const { name, value } = e.target;
+    // Mark field as touched (so we show validation only after interaction)
+    setTouched((t) => ({ ...t, [name]: true }));
 
-      // ------------------------------
-      // SPECIAL CASE: DYNAMIC ARRAY FIELDS
-      // ------------------------------
-      if (name.includes("-")) {
-        const [fieldName, idxStr] = name.split("-");
-        const index = Number(idxStr);
+    // Clear duplicate email inline error when user edits email (we show the error via toast)
+    if (name === "email") {
+      setDuplicateError("");
+    }
 
-        // EXPERIENCE FIELDS
-        if (experienceSchema.shape[fieldName]) {
-          setExperiences((prev) =>
-            prev.map((item, i) =>
-              i === index ? { ...item, [fieldName]: value } : item
-            )
-          );
-          validateField(name, value);
-          return;
-        }
+    // ------------------------------
+    // SPECIAL CASE: DYNAMIC ARRAY FIELDS
+    // ------------------------------
+    if (name.includes("-")) {
+      const [fieldName, idxStr] = name.split("-");
+      const index = Number(idxStr);
 
-        // EDUCATION FIELDS
-        if (educationSchema.shape[fieldName]) {
-          setEducationList((prev) =>
-            prev.map((item, i) =>
-              i === index ? { ...item, [fieldName]: value } : item
-            )
-          );
-          validateField(name, value);
-          return;
-        }
-
-        // SKILL FIELDS
-        if (skillSchema.shape[fieldName]) {
-          setSkillsList((prev) =>
-            prev.map((item, i) =>
-              i === index ? { ...item, [fieldName]: value } : item
-            )
-          );
-          validateField(name, value);
-          return;
-        }
-      }
-
-      // ------------------------------
-      // CASCADING SELECT LOGIC (unchanged)
-      // ------------------------------
-      if (name === "state") {
-        setForm((f) => ({
-          ...f,
-          state: value,
-          district: "",
-          city: "",
-          village: "",
-        }));
-        validateField("state", value);
+      // EXPERIENCE FIELDS
+      if (experienceSchema.shape[fieldName]) {
+        setExperiences((prev) =>
+          prev.map((item, i) =>
+            i === index ? { ...item, [fieldName]: value } : item
+          )
+        );
+        // Debounce field validation for UX
+        scheduleValidate(name, value);
         return;
       }
 
-      if (name === "district") {
-        setForm((f) => ({
-          ...f,
-          district: value,
-          city: "",
-          village: "",
-        }));
-        validateField("district", value);
+      // EDUCATION FIELDS
+      if (educationSchema.shape[fieldName]) {
+        setEducationList((prev) =>
+          prev.map((item, i) =>
+            i === index ? { ...item, [fieldName]: value } : item
+          )
+        );
+        scheduleValidate(name, value);
         return;
       }
 
-      if (name === "city") {
-        setForm((f) => ({
-          ...f,
-          city: value,
-          village: "",
-        }));
-        validateField("city", value);
+      // SKILL FIELDS
+      if (skillSchema.shape[fieldName]) {
+        setSkillsList((prev) =>
+          prev.map((item, i) =>
+            i === index ? { ...item, [fieldName]: value } : item
+          )
+        );
+        scheduleValidate(name, value);
         return;
       }
+    }
 
-      // Availability cascading
-      if (name === "availabilityState") {
-        setForm((f) => ({
-          ...f,
-          availabilityState: value,
-          availabilityDistrict:
-            value === f.availabilityState ? f.availabilityDistrict : "",
-          availabilityCity: "",
-          availabilityVillage: "",
-        }));
-        validateField("availabilityState", value);
-        return;
-      }
+    // ------------------------------
+    // CASCADING SELECT LOGIC (unchanged)
+    // ------------------------------
+    if (name === "state") {
+      setForm((f) => ({
+        ...f,
+        state: value,
+        district: "",
+        city: "",
+        village: "",
+      }));
+      scheduleValidate("state", value);
+      return;
+    }
 
-      if (name === "availabilityDistrict") {
-        setForm((f) => ({
-          ...f,
-          availabilityDistrict: value,
-          availabilityCity:
-            value === f.availabilityDistrict ? f.availabilityCity : "",
-          availabilityVillage: "",
-        }));
-        validateField("availabilityDistrict", value);
-        return;
-      }
+    if (name === "district") {
+      setForm((f) => ({
+        ...f,
+        district: value,
+        city: "",
+        village: "",
+      }));
+      scheduleValidate("district", value);
+      return;
+    }
 
-      if (name === "availabilityCity") {
-        setForm((f) => ({
-          ...f,
-          availabilityCity: value,
-          availabilityVillage:
-            value === f.availabilityCity ? f.availabilityVillage : "",
-        }));
-        validateField("availabilityCity", value);
-        return;
-      }
+    if (name === "city") {
+      setForm((f) => ({
+        ...f,
+        city: value,
+        village: "",
+      }));
+      scheduleValidate("city", value);
+      return;
+    }
 
-      if (name === "phone") {
-        const formatted = normalizeIndianPhone(value);
+    // Availability cascading
+    if (name === "availabilityState") {
+      setForm((f) => ({
+        ...f,
+        availabilityState: value,
+        availabilityDistrict:
+          value === f.availabilityState ? f.availabilityDistrict : "",
+        availabilityCity: "",
+        availabilityVillage: "",
+      }));
+      scheduleValidate("availabilityState", value);
+      return;
+    }
 
-        setForm((prev) => ({
-          ...prev,
-          phone: formatted,
-        }));
+    if (name === "availabilityDistrict") {
+      setForm((f) => ({
+        ...f,
+        availabilityDistrict: value,
+        availabilityCity:
+          value === f.availabilityDistrict ? f.availabilityCity : "",
+        availabilityVillage: "",
+      }));
+      scheduleValidate("availabilityDistrict", value);
+      return;
+    }
 
-        validateField("phone", formatted);
-        return;
-      }
+    if (name === "availabilityCity") {
+      setForm((f) => ({
+        ...f,
+        availabilityCity: value,
+        availabilityVillage:
+          value === f.availabilityCity ? f.availabilityVillage : "",
+      }));
+      scheduleValidate("availabilityCity", value);
+      return;
+    }
 
-      // ------------------------------
-      // DEFAULT NORMAL FIELD UPDATE
-      // ------------------------------
-      setForm((prev) => ({ ...prev, [name]: value }));
+    if (name === "phone") {
+      const formatted = normalizeIndianPhone(value);
 
-      // ------------------------------
-      // REAL-TIME VALIDATION
-      // ------------------------------
+      setForm((prev) => ({
+        ...prev,
+        phone: formatted,
+      }));
+
+      scheduleValidate("phone", formatted);
+      return;
+    }
+
+    // ------------------------------
+    // DEFAULT NORMAL FIELD UPDATE
+    // ------------------------------
+    setForm((prev) => ({ ...prev, [name]: value }));
+
+    // ------------------------------
+    // REAL-TIME VALIDATION (debounced)
+    // ------------------------------
+    scheduleValidate(name, value);
+  };
+
+  // Schedule a debounced validateField call per field
+  const scheduleValidate = (name: string, value: unknown, ms = 220) => {
+    // clear existing
+    const prev = validateTimers.current[name];
+    if (prev) clearTimeout(prev as ReturnType<typeof setTimeout>);
+
+    validateTimers.current[name] = setTimeout(() => {
       validateField(name, value);
-    },
-    []
-  );
+      validateTimers.current[name] = null;
+    }, ms);
+  };
 
   const handleOtpVerify = async () => {
-    const BACKEND_URL =
-      process.env.NEXT_PUBLIC_BACKEND_API_URL ||
-      "https://api.rojgariindia.com/api";
+    const BACKEND_URL = process.env.NEXT_PUBLIC_BACKEND_API_URL;
 
     const res = await fetch(`${BACKEND_URL}/otp/verify-otp`, {
       method: "POST",
@@ -380,14 +400,14 @@ const ResumePage = () => {
     },
     []
   );
-  const validateField = (name: string, value: any) => {
+  const validateField = (name: string, value: unknown) => {
     try {
       // ARRAY FIELDS LIKE: fieldName-0
       if (name.includes("-")) {
         const [field, indexStr] = name.split("-");
         const index = Number(indexStr);
 
-        let fieldSchema =
+        const fieldSchema =
           experienceSchema.shape[field] ||
           educationSchema.shape[field] ||
           skillSchema.shape[field];
@@ -409,26 +429,84 @@ const ResumePage = () => {
         return;
       }
 
-      // NORMAL FIELDS - Skip for now as we're using discriminated union
-      // Individual field validation is handled by the full form validation
-      setErrors((e) => {
-        const copy = { ...e };
-        delete copy[name];
-        return copy;
-      });
-    } catch (err: any) {
-      const msg = err?.errors?.[0]?.message || "Invalid value";
+      // NORMAL FIELDS - validate individual primitive fields using zod
+      // Provide per-field schemas for immediate feedback so errors are
+      // removed as soon as user corrects the value.
+      const normalFieldSchemas: Record<string, z.ZodTypeAny> = {
+        firstName: z.string().min(1, "First name required"),
+        surName: z.string().min(1, "Surname required"),
+        email: z.string().email("Invalid email"),
+        phone: z
+          .string()
+          .refine(
+            (val) => /^(\+91)[6-9]\d{9}$/.test(val),
+            "Enter a valid Indian mobile number"
+          ),
+        // Cascading/selects that you mark required in the UI
+        state: z.string().min(1, "State required"),
+        district: z.string().min(1, "District required"),
+        city: z.string().min(1, "City required"),
+        village: z.string().min(1, "Village required"),
+        address: z.string().min(1, "Address required"),
+        // Optional / informational fields
+        summary: z.string().optional(),
+        availabilityCategory: z.string().optional(),
+        availabilityState: z.string().optional(),
+        availabilityDistrict: z.string().optional(),
+        availabilityCity: z.string().optional(),
+        availabilityVillage: z.string().optional(),
+        joiningDate: z.string().optional(),
+        availabilityJobCategory: z.string().optional(),
+        expectedSalaryRange: z.string().optional(),
+        additionalInfo: z.string().optional(),
+      };
 
-      setErrors((e) => ({
-        ...e,
-        [name]: msg,
-      }));
+      const fieldSchema = normalFieldSchemas[name];
+
+      if (fieldSchema) {
+        z.object({ [name]: fieldSchema }).parse({ [name]: value });
+
+        setErrors((e) => {
+          const copy = { ...e };
+          delete copy[name];
+          return copy;
+        });
+      } else {
+        // If we don't have a specific schema, just clear any existing error
+        setErrors((e) => {
+          const copy = { ...e };
+          delete copy[name];
+          return copy;
+        });
+      }
+    } catch (err: unknown) {
+      let msg = "Invalid value";
+      if (err instanceof z.ZodError) {
+        msg = err.issues?.[0]?.message || msg;
+      } else if (err && typeof err === "object") {
+        const maybe = err as {
+          message?: string;
+          errors?: Array<{ message?: string }>;
+        };
+        msg = maybe.errors?.[0]?.message || maybe.message || msg;
+      }
+
+      // Only set a validation error if the user has interacted with the field
+      // or after they tried to submit the form. This prevents showing errors
+      // for untouched fields and improves UX while typing.
+      if (touched[name] || formSubmitted) {
+        setErrors((e) => ({
+          ...e,
+          [name]: msg,
+        }));
+      }
     }
   };
 
-  const validateForm = (payload: any) => {
-    console.log("🔍 Validating form with workType:", payload.workType);
-    console.log("📚 Education entries:", payload.educationList?.length || 0);
+  const validateForm = (payload: unknown) => {
+    const p = payload as { workType?: string; educationList?: unknown[] };
+    console.log("🔍 Validating form with workType:", p.workType);
+    console.log("📚 Education entries:", p.educationList?.length || 0);
 
     const parsed = resumeSchema.safeParse(payload);
 
@@ -488,6 +566,8 @@ const ResumePage = () => {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    // mark that user has attempted to submit - show all validation errors
+    setFormSubmitted(true);
 
     console.log("🚀 FORM SUBMIT STARTED");
     console.log("📝 Form Data:", form);
@@ -548,18 +628,8 @@ const ResumePage = () => {
       })),
     };
 
-    console.log("FINAL SUBMIT PAYLOAD:", apiPayload);
-
     try {
-      const BACKEND_URL =
-        process.env.NEXT_PUBLIC_BACKEND_API_URL ||
-        "https://api.rojgariindia.com/api";
-
-      console.log("🌐 Backend URL:", BACKEND_URL);
-      console.log(
-        "📤 Sending POST request to:",
-        `${BACKEND_URL}/candidate-profile`
-      );
+      const BACKEND_URL = process.env.NEXT_PUBLIC_BACKEND_API_URL;
 
       // Call backend API
       const res = await fetch(`${BACKEND_URL}/candidate-profile`, {
@@ -583,19 +653,28 @@ const ResumePage = () => {
 
       // Handle errors
       if (!res.ok) {
-        console.error("❌ API Error:", data);
+        if (res.status === 409) {
+          showSnackbar(
+            data.message || "Conflict: Email already exists!",
+            "error"
+          );
+        } else if (res.status === 500) {
+          showSnackbar(
+            data.message || "Internal server error. Please try again later.",
+            "error"
+          );
+        } else {
+          showSnackbar(data.message || "Something went wrong", "error");
+        }
         setDuplicateError(data.message || "Something went wrong");
         return;
       }
 
       // Get candidate ID from response
       const candidateId = data.data.id;
-      console.log("✅ Profile created with ID:", candidateId);
-      console.log("🎉 SUCCESS! Full response:", data);
 
       // Upload photo if file was selected
       if (photoFile) {
-        console.log("📤 Uploading photo to backend...");
         try {
           const photoFormData = new FormData();
           photoFormData.append("profile_photo", photoFile);
@@ -610,14 +689,28 @@ const ResumePage = () => {
 
           if (uploadRes.ok) {
             const uploadData = await uploadRes.json();
-            console.log("✅ Photo uploaded successfully:", uploadData);
           } else {
             const errorData = await uploadRes.json();
-            console.warn("⚠️ Photo upload failed:", errorData);
+            if (uploadRes.status === 409) {
+              showSnackbar(
+                errorData.message || "Conflict during photo upload!",
+                "error"
+              );
+            } else if (uploadRes.status === 500) {
+              showSnackbar(
+                errorData.message || "Photo upload server error.",
+                "error"
+              );
+            } else {
+              showSnackbar(
+                errorData.message || "Photo upload failed.",
+                "error"
+              );
+            }
           }
         } catch (photoError) {
+          showSnackbar("Photo upload error. Please try again.", "error");
           console.error("❌ Photo upload error:", photoError);
-          // Continue even if photo upload fails
         }
       } else {
         console.log("ℹ️ No photo to upload");
@@ -625,14 +718,33 @@ const ResumePage = () => {
 
       // Clear error and show success
       setDuplicateError("");
-      console.log("🎉 ALL DONE! Showing success message");
-      alert(
-        `✅ Profile created successfully for ${form.firstName} ${form.surName}!`
+      showSnackbar(
+        `Profile created successfully for ${form.firstName} ${form.surName}!`,
+        "success"
       );
-    } catch (err: any) {
-      console.error("❌ SUBMISSION ERROR:", err);
-      console.error("❌ Error Message:", err.message);
-      console.error("❌ Error Stack:", err.stack);
+      // Reset form to initial state after successful creation
+      setForm(initialForm);
+      setTouched({});
+      setFormSubmitted(false);
+      setExperiences([
+        {
+          position: "",
+          company: "",
+          noticePeriod: "",
+          startDate: "",
+          endDate: "",
+          stillWorkingDate: "",
+        },
+      ]);
+      setEducationList([{ degree: "", university: "", passingYear: "" }]);
+      setSkillsList([{ name: "", level: "", years: "" }]);
+      setPhotoPreview(null);
+      setPhotoFile(null);
+      setErrors({});
+      setIsVerified(false);
+      setShowPopup(false);
+    } catch (_err: unknown) {
+      // Generic server error — keep a user-friendly message
       setDuplicateError("Server error. Please try again.");
     }
   };
@@ -737,6 +849,7 @@ const ResumePage = () => {
                 value={form.firstName}
                 onChange={handleChange}
                 error={errors.firstName}
+                required
               />
               <InputBox
                 label="Surname"
@@ -744,6 +857,7 @@ const ResumePage = () => {
                 value={form.surName}
                 onChange={handleChange}
                 error={errors.surName}
+                required
               />
 
               <label className="w-full h-[45px] sm:h-auto bg-white/10 border border-gray-300 rounded-xl flex items-center justify-center cursor-pointer text-gray-400 overflow-hidden row-span-1 md:row-span-3">
@@ -774,6 +888,7 @@ const ResumePage = () => {
                 value={form.email}
                 onChange={handleChange}
                 error={errors.email}
+                required
               />
               <InputBox
                 label="Mobile Number"
@@ -781,6 +896,7 @@ const ResumePage = () => {
                 value={form.phone}
                 onChange={handleChange}
                 error={errors.phone}
+                required
               />
 
               <SelectBox
@@ -825,35 +941,39 @@ const ResumePage = () => {
                 error={errors.address}
               />
 
-              <div className="lg:col-span-3 h-28 relative">
-                <textarea
-                  name="summary"
-                  value={form.summary}
-                  onChange={handleChange}
-                  placeholder=" "
-                  className={`
-      peer w-full h-full bg-white outline-none px-4 pt-6 pb-2 rounded-xl 
-      text-base border resize-none
-       focus:border-[#72B76A] focus:ring-1 focus:ring-[#72B76A]
-      ${errors.summary ? "border-red-500" : "border-gray-300"}
-    `}
-                ></textarea>
+              <div className="lg:col-span-3">
+                <div className="relative w-full h-28">
+                  <textarea
+                    name="summary"
+                    value={form.summary}
+                    onChange={handleChange}
+                    placeholder=" "
+                    className={`peer w-full px-4 pt-6 pb-2 rounded-xl bg-white
+                      border outline-none transition-all
+                      ${errors.summary ? "border-red-500" : "border-gray-300"}
+                      focus:border-[#72B76A] focus:ring-1 focus:ring-[#72B76A]
+                      resize-none h-full`}
+                  />
 
-                <label
-                  htmlFor="summary"
-                  className="absolute left-4 bg-white px-2 text-gray-400 transition-all duration-150 pointer-events-none top-1/2 -translate-y-1/2 peer-focus:top-1 peer-focus:-translate-y-1/2 peer-focus:text-sm peer-focus:text-[#72B76A] peer-placeholder-shown:top-1/2 peer-placeholder-shown:-translate-y-1/2 peer-placeholder-shown:text-base peer-not-placeholder-shown:top-1 peer-not-placeholder-shown:-translate-y-1/2 peer-not-placeholder-shown:text-sm peer-not-placeholder-shown:text-gray-400"
-                >
-                  Summary
-                </label>
-                {errors.summary && (
-                  <p className="text-red-500 text-xs mt-1">{errors.summary}</p>
-                )}
+                  <label
+                    className={`absolute left-4 px-1 bg-white text-gray-500 pointer-events-none
+                      transition-all duration-150
+                      top-1/2 -translate-y-1/2
+                      peer-focus:top-1 peer-focus:-translate-y-1/2 peer-focus:text-sm peer-focus:text-[#72B76A]
+                      peer-placeholder-shown:top-1/2 peer-placeholder-shown:-translate-y-1/2 peer-placeholder-shown:text-base
+                      peer-not-placeholder-shown:top-1 peer-not-placeholder-shown:-translate-y-1/2 peer-not-placeholder-shown:text-sm peer-not-placeholder-shown:text-[#72B76A]`}
+                  >
+                    Summary
+                  </label>
+                  {errors.summary && (
+                    <p className="text-red-500 text-xs mt-1">
+                      {errors.summary}
+                    </p>
+                  )}
+                </div>
               </div>
             </div>
-            {/* INLINE DUPLICATE ERROR SHOWING HERE */}
-            {duplicateError && (
-              <p className="text-red-500 text-sm mt-1">{duplicateError}</p>
-            )}
+            {/* duplicateError is shown via global toast; do not render inline */}
           </>
 
           {/* Work Type Toggle */}
@@ -950,34 +1070,39 @@ const ResumePage = () => {
                         validateField(`position-${index}`, e.target.value);
                       }}
                       error={errors[`position-${index}`]}
+                      required
                     />
                     <InputBox
                       label="Company"
                       name={`company-${index}`}
                       value={exp.company}
-                      onChange={(e) =>
+                      onChange={(e) => {
+                        const val = e.target.value;
                         setExperiences((p) =>
                           p.map((v, i) =>
-                            i === index ? { ...v, company: e.target.value } : v
+                            i === index ? { ...v, company: val } : v
                           )
-                        )
-                      }
+                        );
+                        validateField(`company-${index}`, val);
+                      }}
                       error={errors[`company-${index}`]}
+                      required
                     />
                     <InputBox
                       label="Notice Period"
                       name={`noticePeriod-${index}`}
                       value={exp.noticePeriod}
-                      onChange={(e) =>
+                      onChange={(e) => {
+                        const val = e.target.value;
                         setExperiences((p) =>
                           p.map((v, i) =>
-                            i === index
-                              ? { ...v, noticePeriod: e.target.value }
-                              : v
+                            i === index ? { ...v, noticePeriod: val } : v
                           )
-                        )
-                      }
+                        );
+                        validateField(`noticePeriod-${index}`, val);
+                      }}
                       error={errors[`noticePeriod-${index}`]}
+                      required
                     />
                   </div>
 
@@ -993,6 +1118,11 @@ const ResumePage = () => {
                             i === index ? { ...v, startDate: newStartDate } : v
                           )
                         );
+                        // mark touched for this array field
+                        setTouched((t) => ({
+                          ...t,
+                          [`startDate-${index}`]: true,
+                        }));
                         // Validate against endDate if it exists
                         if (exp.endDate) {
                           validateExperienceDates(
@@ -1001,8 +1131,11 @@ const ResumePage = () => {
                             exp.endDate
                           );
                         }
+                        // validate the startDate field itself (debounced)
+                        scheduleValidate(`startDate-${index}`, newStartDate);
                       }}
                       error={errors[`startDate-${index}`]}
+                      required
                     />
 
                     <DatePicker
@@ -1016,12 +1149,18 @@ const ResumePage = () => {
                             i === index ? { ...v, endDate: newEndDate } : v
                           )
                         );
+                        // mark touched and validate
+                        setTouched((t) => ({
+                          ...t,
+                          [`endDate-${index}`]: true,
+                        }));
                         // Validate against startDate in real-time
                         validateExperienceDates(
                           index,
                           exp.startDate,
                           newEndDate
                         );
+                        scheduleValidate(`endDate-${index}`, newEndDate);
                       }}
                       error={errors[`endDate-${index}`]}
                     />
@@ -1030,15 +1169,19 @@ const ResumePage = () => {
                       label="Still Working From"
                       name={`stillWorkingDate-${index}`}
                       value={exp.stillWorkingDate}
-                      onChange={(e) =>
+                      onChange={(e) => {
+                        const val = e.target.value;
                         setExperiences((prev) =>
                           prev.map((v, i) =>
-                            i === index
-                              ? { ...v, stillWorkingDate: e.target.value }
-                              : v
+                            i === index ? { ...v, stillWorkingDate: val } : v
                           )
-                        )
-                      }
+                        );
+                        setTouched((t) => ({
+                          ...t,
+                          [`stillWorkingDate-${index}`]: true,
+                        }));
+                        scheduleValidate(`stillWorkingDate-${index}`, val);
+                      }}
                       error={errors[`stillWorkingDate-${index}`]}
                     />
                   </div>
@@ -1106,6 +1249,7 @@ const ResumePage = () => {
                         setEducationList(updated);
                       }}
                       error={errors[`degree-${index}`]}
+                      required
                     />
 
                     <InputBox
@@ -1118,6 +1262,7 @@ const ResumePage = () => {
                         setEducationList(updated);
                       }}
                       error={errors[`university-${index}`]}
+                      required
                     />
 
                     <InputBox
@@ -1130,6 +1275,7 @@ const ResumePage = () => {
                         setEducationList(updated);
                       }}
                       error={errors[`passingYear-${index}`]}
+                      required
                     />
                   </div>
 
@@ -1188,11 +1334,15 @@ const ResumePage = () => {
                     name={`name-${index}`}
                     value={skill.name}
                     onChange={(e) => {
+                      const val = e.target.value;
                       const updated = [...skillsList];
-                      updated[index].name = e.target.value;
+                      updated[index].name = val;
                       setSkillsList(updated);
+                      setTouched((t) => ({ ...t, [`name-${index}`]: true }));
+                      scheduleValidate(`name-${index}`, val);
                     }}
                     error={errors[`name-${index}`]}
+                    required
                   />
 
                   <SelectBox
@@ -1201,11 +1351,15 @@ const ResumePage = () => {
                     value={skill.level}
                     options={["Beginner", "Intermediate", "Expert"]}
                     onChange={(e) => {
+                      const val = e.target.value;
                       const updated = [...skillsList];
-                      updated[index].level = e.target.value;
+                      updated[index].level = val;
                       setSkillsList(updated);
+                      setTouched((t) => ({ ...t, [`level-${index}`]: true }));
+                      scheduleValidate(`level-${index}`, val);
                     }}
                     error={errors[`level-${index}`]}
+                    required
                   />
 
                   <InputBox
@@ -1213,11 +1367,15 @@ const ResumePage = () => {
                     name={`years-${index}`}
                     value={skill.years}
                     onChange={(e) => {
+                      const val = e.target.value;
                       const updated = [...skillsList];
-                      updated[index].years = e.target.value;
+                      updated[index].years = val;
                       setSkillsList(updated);
+                      setTouched((t) => ({ ...t, [`years-${index}`]: true }));
+                      scheduleValidate(`years-${index}`, val);
                     }}
                     error={errors[`years-${index}`]}
+                    required
                   />
                 </div>
 
