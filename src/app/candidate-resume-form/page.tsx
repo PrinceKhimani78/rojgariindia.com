@@ -18,24 +18,17 @@ import {
   resumeSchema,
 } from "@/schemas/resumeSchemas";
 import { useGlobalUI } from "@/components/global/GlobalUIProvider";
+import UI_MESSAGES from "@/constants/uiMessages";
+import {
+  initialForm,
+  normalizeIndianPhone,
+  validateField as validateFieldUtil,
+  validateForm as validateFormUtil,
+  validateExperienceDates as validateExperienceDatesUtil,
+} from "@/utils/formValidation";
+import { sendOtp, verifyOtp } from "@/services/otpService";
 
 const phoneRegex = /^(?:\+91[-\s]?)?(?:\d{10}|\d{5}\s?\d{5})$/;
-const normalizeIndianPhone = (input: string) => {
-  const digits = input.replace(/\D/g, ""); // remove non-digits
-
-  // If number starts with 91 and total is 12 digits → treat as +91XXXXXXXXXX
-  if (digits.length === 12 && digits.startsWith("91")) {
-    return `+${digits}`;
-  }
-
-  // If user entered only 10 digits → prepend +91
-  if (digits.length === 10) {
-    return `+91${digits}`;
-  }
-
-  // Anything else → return raw so validation can catch it
-  return input;
-};
 
 type IndiaJson = {
   [state: string]: {
@@ -73,34 +66,13 @@ const ResumePage = () => {
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [touched, setTouched] = useState<Record<string, boolean>>({});
   const [formSubmitted, setFormSubmitted] = useState(false);
+  const [loading, setLoading] = useState(false);
 
   // Timers for debounced validation per-field
   const validateTimers = React.useRef<
     Record<string, ReturnType<typeof setTimeout> | null>
   >({});
 
-  const initialForm = {
-    firstName: "",
-    surName: "",
-    email: "",
-    phone: "",
-    state: "",
-    district: "",
-    city: "",
-    village: "",
-    address: "",
-    summary: "",
-    availabilityCategory: "",
-    availabilityState: "",
-    availabilityDistrict: "",
-    availabilityCity: "",
-    availabilityVillage: "",
-
-    joiningDate: "",
-    availabilityJobCategory: "",
-    expectedSalaryRange: "",
-    additionalInfo: "",
-  };
   const [form, setForm] = useState(initialForm);
 
   const [experiences, setExperiences] = useState<ExperienceEntry[]>([
@@ -135,7 +107,7 @@ const ResumePage = () => {
         const json = (await res.json()) as IndiaJson;
         setIndiaData(json);
       } catch (err) {
-        console.error("Error loading India JSON", err);
+        // failed to load india JSON — ignore in client
       }
     };
 
@@ -145,58 +117,28 @@ const ResumePage = () => {
     setShowPopup(true);
   }, []);
   const handleEmailNext = async () => {
-    if (!form.email) return alert("Enter email");
+    if (!form.email) return alert(UI_MESSAGES.ENTER_EMAIL);
 
     setEmailVerificationLoading(true);
-
+    setLoading(true);
     const BACKEND_URL = process.env.NEXT_PUBLIC_BACKEND_API_URL;
 
-    await fetch(`${BACKEND_URL}/otp/send-otp`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ email: form.email }),
-    });
-
-    setEmailVerificationLoading(false);
-    setPopupStep("otp");
-  };
-
-  // Validate experience date range
-  const validateExperienceDates = (
-    index: number,
-    startDate: string,
-    endDate: string
-  ) => {
-    console.log(`🔍 Validating dates for experience ${index}:`, {
-      startDate,
-      endDate,
-    });
-
-    // Clear previous error first
-    setErrors((prev) => {
-      const newErrors = { ...prev };
-      delete newErrors[`endDate-${index}`];
-      return newErrors;
-    });
-
-    // Only validate if both dates are provided
-    if (startDate && endDate) {
-      const start = new Date(startDate);
-      const end = new Date(endDate);
-
-      if (end < start) {
-        console.log(
-          `❌ Validation failed: End date (${endDate}) is before start date (${startDate})`
-        );
-        setErrors((prev) => ({
-          ...prev,
-          [`endDate-${index}`]: "End date cannot be before start date",
-        }));
+    try {
+      const result = await sendOtp(BACKEND_URL, form.email);
+      if (result.success) {
+        setPopupStep("otp");
       } else {
-        console.log(`✅ Validation passed: Dates are in correct order`);
+        showSnackbar(result.message || UI_MESSAGES.SERVER_ERROR, "error");
       }
+    } catch (err) {
+      showSnackbar(UI_MESSAGES.SERVER_ERROR, "error");
+    } finally {
+      setEmailVerificationLoading(false);
+      setLoading(false);
     }
   };
+
+  // validateExperienceDates moved to utils; page will set/clear errors using the result
 
   const handleChange = (
     e:
@@ -358,34 +300,49 @@ const ResumePage = () => {
     if (prev) clearTimeout(prev as ReturnType<typeof setTimeout>);
 
     validateTimers.current[name] = setTimeout(() => {
-      validateField(name, value);
+      const err = validateFieldUtil(name, value, workType);
+
+      if (err) {
+        // only show error if user interacted or after a submit attempt
+        if (touched[name] || formSubmitted) {
+          setErrors((e) => ({ ...e, [name]: err }));
+        }
+      } else {
+        // clear success unconditionally so corrected values remove errors
+        setErrors((e) => {
+          const copy = { ...e };
+          delete copy[name];
+          return copy;
+        });
+      }
+
       validateTimers.current[name] = null;
     }, ms);
   };
 
   const handleOtpVerify = async () => {
     const BACKEND_URL = process.env.NEXT_PUBLIC_BACKEND_API_URL;
+    setLoading(true);
+    try {
+      const result = await verifyOtp(BACKEND_URL, form.email, otp);
+      if (!result.success) {
+        showSnackbar(UI_MESSAGES.INCORRECT_OTP, "error");
+        return;
+      }
 
-    const res = await fetch(`${BACKEND_URL}/otp/verify-otp`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ email: form.email, otp }),
-    });
-
-    const data = await res.json();
-    if (!data.success) return alert("Incorrect OTP");
-
-    setIsVerified(true);
-    setTimeout(() => setShowPopup(false), 1500);
+      setIsVerified(true);
+      setTimeout(() => setShowPopup(false), 1500);
+    } catch (err) {
+      showSnackbar(UI_MESSAGES.SERVER_ERROR, "error");
+    } finally {
+      setLoading(false);
+    }
   };
 
   const handlePhoto = useCallback(
     async (e: React.ChangeEvent<HTMLInputElement>) => {
       const file = e.target.files?.[0];
       if (!file) return;
-
-      console.log("📸 Photo selected:", file.name, file.size, "bytes");
-
       // Store the file for later upload
       setPhotoFile(file);
 
@@ -393,188 +350,19 @@ const ResumePage = () => {
       const reader = new FileReader();
       reader.onloadend = () => setPhotoPreview(reader.result as string);
       reader.readAsDataURL(file);
-
-      console.log(
-        "✅ Photo ready for upload (will upload after profile creation)"
-      );
+      // Photo prepared for preview/upload
     },
     []
   );
-  const validateField = (name: string, value: unknown) => {
-    try {
-      // ARRAY FIELDS LIKE: fieldName-0
-      if (name.includes("-")) {
-        const [field, indexStr] = name.split("-");
-        const index = Number(indexStr);
+  // validateField and validateForm moved to utils. We'll call them and
+  // set/clear errors here to keep component state local.
 
-        const fieldSchema =
-          experienceSchema.shape[field] ||
-          educationSchema.shape[field] ||
-          skillSchema.shape[field];
-
-        if (!fieldSchema) return;
-
-        // CONDITIONAL:
-        if (workType === "fresher" && experienceSchema.shape[field]) return;
-        if (workType === "experienced" && educationSchema.shape[field]) return;
-
-        z.object({ [field]: fieldSchema }).parse({ [field]: value });
-
-        setErrors((e) => {
-          const copy = { ...e };
-          delete copy[name];
-          return copy;
-        });
-
-        return;
-      }
-
-      // NORMAL FIELDS - validate individual primitive fields using zod
-      // Provide per-field schemas for immediate feedback so errors are
-      // removed as soon as user corrects the value.
-      const normalFieldSchemas: Record<string, z.ZodTypeAny> = {
-        firstName: z.string().min(1, "First name required"),
-        surName: z.string().min(1, "Surname required"),
-        email: z.string().email("Invalid email"),
-        phone: z
-          .string()
-          .refine(
-            (val) => /^(\+91)[6-9]\d{9}$/.test(val),
-            "Enter a valid Indian mobile number"
-          ),
-        // Cascading/selects that you mark required in the UI
-        state: z.string().min(1, "State required"),
-        district: z.string().min(1, "District required"),
-        city: z.string().min(1, "City required"),
-        village: z.string().min(1, "Village required"),
-        address: z.string().min(1, "Address required"),
-        // Optional / informational fields
-        summary: z.string().optional(),
-        availabilityCategory: z.string().optional(),
-        availabilityState: z.string().optional(),
-        availabilityDistrict: z.string().optional(),
-        availabilityCity: z.string().optional(),
-        availabilityVillage: z.string().optional(),
-        joiningDate: z.string().optional(),
-        availabilityJobCategory: z.string().optional(),
-        expectedSalaryRange: z.string().optional(),
-        additionalInfo: z.string().optional(),
-      };
-
-      const fieldSchema = normalFieldSchemas[name];
-
-      if (fieldSchema) {
-        z.object({ [name]: fieldSchema }).parse({ [name]: value });
-
-        setErrors((e) => {
-          const copy = { ...e };
-          delete copy[name];
-          return copy;
-        });
-      } else {
-        // If we don't have a specific schema, just clear any existing error
-        setErrors((e) => {
-          const copy = { ...e };
-          delete copy[name];
-          return copy;
-        });
-      }
-    } catch (err: unknown) {
-      let msg = "Invalid value";
-      if (err instanceof z.ZodError) {
-        msg = err.issues?.[0]?.message || msg;
-      } else if (err && typeof err === "object") {
-        const maybe = err as {
-          message?: string;
-          errors?: Array<{ message?: string }>;
-        };
-        msg = maybe.errors?.[0]?.message || maybe.message || msg;
-      }
-
-      // Only set a validation error if the user has interacted with the field
-      // or after they tried to submit the form. This prevents showing errors
-      // for untouched fields and improves UX while typing.
-      if (touched[name] || formSubmitted) {
-        setErrors((e) => ({
-          ...e,
-          [name]: msg,
-        }));
-      }
-    }
-  };
-
-  const validateForm = (payload: unknown) => {
-    const p = payload as { workType?: string; educationList?: unknown[] };
-    console.log("🔍 Validating form with workType:", p.workType);
-    console.log("📚 Education entries:", p.educationList?.length || 0);
-
-    const parsed = resumeSchema.safeParse(payload);
-
-    // DEBUG LOG: shows EXACT failing fields
-    if (!parsed.success) {
-      console.log(
-        "❌ ZOD VALIDATION ERRORS:",
-        parsed.error.issues.map((e) => ({
-          path: e.path.join("."),
-          message: e.message,
-        }))
-      );
-    } else {
-      console.log("✅ Form validation passed!");
-    }
-
-    if (parsed.success) {
-      setErrors({});
-      return true;
-    }
-
-    const mapped: Record<string, string> = {};
-
-    parsed.error.issues.forEach((err) => {
-      const path = err.path;
-
-      if (!path.length) return;
-
-      if (path[0] === "experiences") {
-        const [, index, field] = path;
-        const key = `${String(field)}-${String(index)}`;
-        mapped[key] = err.message;
-        return;
-      }
-
-      if (path[0] === "educationList") {
-        const [, index, field] = path;
-        const key = `${String(field)}-${String(index)}`;
-        mapped[key] = err.message;
-        return;
-      }
-
-      if (path[0] === "skillsList") {
-        const [, index, field] = path;
-        const key = `${String(field)}-${String(index)}`;
-        mapped[key] = err.message;
-        return;
-      }
-
-      const key = String(path[0]);
-      mapped[key] = err.message;
-    });
-
-    setErrors(mapped);
-    return false;
-  };
+  // validateForm moved to utils; call validateFormUtil(payload) below in submit
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     // mark that user has attempted to submit - show all validation errors
     setFormSubmitted(true);
-
-    console.log("🚀 FORM SUBMIT STARTED");
-    console.log("📝 Form Data:", form);
-    console.log("💼 Work Type:", workType);
-    console.log("📋 Experiences:", experiences);
-    console.log("🎓 Education:", educationList);
-    console.log("⚡ Skills:", skillsList);
 
     // Validate first
     const payload = {
@@ -586,16 +374,14 @@ const ResumePage = () => {
       skillsList,
     };
 
-    console.log("✅ Validation Payload:", payload);
-
-    const isValid = validateForm(payload);
-    console.log("✅ Validation Result:", isValid);
-
-    if (!isValid) {
-      console.log("❌ Validation FAILED - scrolling to top");
+    const vf = validateFormUtil(payload);
+    if (!vf.isValid) {
+      setErrors(vf.errors);
       window.scrollTo({ top: 0, behavior: "smooth" });
       return;
     }
+    // Clear any stale errors if form is valid
+    setErrors({});
 
     // Transform to backend API format
     const apiPayload = {
@@ -628,9 +414,9 @@ const ResumePage = () => {
       })),
     };
 
+    const BACKEND_URL = process.env.NEXT_PUBLIC_BACKEND_API_URL;
+    setLoading(true);
     try {
-      const BACKEND_URL = process.env.NEXT_PUBLIC_BACKEND_API_URL;
-
       // Call backend API
       const res = await fetch(`${BACKEND_URL}/candidate-profile`, {
         method: "POST",
@@ -638,35 +424,31 @@ const ResumePage = () => {
         body: JSON.stringify(apiPayload),
       });
 
-      console.log("📥 Response Status:", res.status);
-      console.log("📥 Response OK:", res.ok);
-
+      // response received
       let data;
       try {
         data = await res.json();
-        console.log("📦 Response Data:", data);
+        // parsed response
       } catch {
-        console.error("❌ Failed to parse JSON response");
-        setDuplicateError("Server error. Please try again.");
+        // failed to parse JSON response
+        showSnackbar(UI_MESSAGES.FAILED_PARSE_JSON, "error");
+        setDuplicateError(UI_MESSAGES.SERVER_ERROR);
         return;
       }
 
       // Handle errors
       if (!res.ok) {
         if (res.status === 409) {
-          showSnackbar(
-            data.message || "Conflict: Email already exists!",
-            "error"
-          );
+          showSnackbar(data.message || UI_MESSAGES.CONFLICT_EMAIL, "error");
         } else if (res.status === 500) {
+          showSnackbar(data.message || UI_MESSAGES.SERVER_ERROR, "error");
+        } else {
           showSnackbar(
-            data.message || "Internal server error. Please try again later.",
+            data.message || UI_MESSAGES.SOMETHING_WENT_WRONG,
             "error"
           );
-        } else {
-          showSnackbar(data.message || "Something went wrong", "error");
         }
-        setDuplicateError(data.message || "Something went wrong");
+        setDuplicateError(data.message || UI_MESSAGES.SOMETHING_WENT_WRONG);
         return;
       }
 
@@ -688,38 +470,37 @@ const ResumePage = () => {
           );
 
           if (uploadRes.ok) {
-            const uploadData = await uploadRes.json();
+            await uploadRes.json();
           } else {
             const errorData = await uploadRes.json();
             if (uploadRes.status === 409) {
               showSnackbar(
-                errorData.message || "Conflict during photo upload!",
+                errorData.message || UI_MESSAGES.PHOTO_UPLOAD_CONFLICT,
                 "error"
               );
             } else if (uploadRes.status === 500) {
               showSnackbar(
-                errorData.message || "Photo upload server error.",
+                errorData.message || UI_MESSAGES.PHOTO_UPLOAD_SERVER_ERROR,
                 "error"
               );
             } else {
               showSnackbar(
-                errorData.message || "Photo upload failed.",
+                errorData.message || UI_MESSAGES.PHOTO_UPLOAD_FAILED,
                 "error"
               );
             }
           }
         } catch (photoError) {
-          showSnackbar("Photo upload error. Please try again.", "error");
-          console.error("❌ Photo upload error:", photoError);
+          showSnackbar(UI_MESSAGES.PHOTO_UPLOAD_FAILED, "error");
         }
       } else {
-        console.log("ℹ️ No photo to upload");
+        // no photo selected to upload
       }
 
       // Clear error and show success
       setDuplicateError("");
       showSnackbar(
-        `Profile created successfully for ${form.firstName} ${form.surName}!`,
+        UI_MESSAGES.PROFILE_CREATED_SUCCESS(form.firstName, form.surName),
         "success"
       );
       // Reset form to initial state after successful creation
@@ -743,9 +524,11 @@ const ResumePage = () => {
       setErrors({});
       setIsVerified(false);
       setShowPopup(false);
-    } catch (_err: unknown) {
-      // Generic server error — keep a user-friendly message
-      setDuplicateError("Server error. Please try again.");
+    } catch (err) {
+      setDuplicateError(UI_MESSAGES.SERVER_ERROR);
+      showSnackbar(UI_MESSAGES.SERVER_ERROR, "error");
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -789,6 +572,14 @@ const ResumePage = () => {
   // console.log("CURRENT ERRORS --->", errors);
   return (
     <div className="relative min-h-screen w-full flex justify-center px-4 py-10 overflow-x-hidden bg-gray-50">
+      {loading && (
+        <div className="absolute inset-0 z-50 flex items-center justify-center bg-black/40">
+          <div className="flex flex-col items-center gap-4">
+            <div className="w-14 h-14 border-4 border-white rounded-full border-t-transparent animate-spin"></div>
+            <div className="text-white">Loading...</div>
+          </div>
+        </div>
+      )}
       <Popup open={showPopup} onClose={() => setShowPopup(false)}>
         <div className="flex flex-col items-center gap-4 mb-4">
           <Image
@@ -1002,6 +793,20 @@ const ResumePage = () => {
 
                 // Education is NOT required for experienced → clear it
                 setEducationList([]);
+                // Remove any education-related validation errors when switching
+                setErrors((prev) => {
+                  const copy = { ...prev };
+                  Object.keys(copy).forEach((k) => {
+                    if (
+                      k.startsWith("degree-") ||
+                      k.startsWith("university-") ||
+                      k.startsWith("passingYear-")
+                    ) {
+                      delete copy[k];
+                    }
+                  });
+                  return copy;
+                });
               }}
               className={`
       w-full h-12 rounded-lg transition
@@ -1030,6 +835,23 @@ const ResumePage = () => {
 
                 // Experience is NOT required for fresher → clear it
                 setExperiences([]);
+                // Remove any experience-related validation errors when switching
+                setErrors((prev) => {
+                  const copy = { ...prev };
+                  Object.keys(copy).forEach((k) => {
+                    if (
+                      k.startsWith("position-") ||
+                      k.startsWith("company-") ||
+                      k.startsWith("noticePeriod-") ||
+                      k.startsWith("startDate-") ||
+                      k.startsWith("endDate-") ||
+                      k.startsWith("stillWorkingDate-")
+                    ) {
+                      delete copy[k];
+                    }
+                  });
+                  return copy;
+                });
               }}
               className={`
       w-full h-12 rounded-lg transition
@@ -1062,12 +884,33 @@ const ResumePage = () => {
                       name={`position-${index}`}
                       value={exp.position}
                       onChange={(e) => {
+                        const val = e.target.value;
                         setExperiences((p) =>
                           p.map((v, i) =>
-                            i === index ? { ...v, position: e.target.value } : v
+                            i === index ? { ...v, position: val } : v
                           )
                         );
-                        validateField(`position-${index}`, e.target.value);
+
+                        const err = validateFieldUtil(
+                          `position-${index}`,
+                          val,
+                          workType
+                        );
+                        if (!err) {
+                          setErrors((prev) => {
+                            const c = { ...prev };
+                            delete c[`position-${index}`];
+                            return c;
+                          });
+                        } else if (
+                          touched[`position-${index}`] ||
+                          formSubmitted
+                        ) {
+                          setErrors((prev) => ({
+                            ...prev,
+                            [`position-${index}`]: err,
+                          }));
+                        }
                       }}
                       error={errors[`position-${index}`]}
                       required
@@ -1083,7 +926,27 @@ const ResumePage = () => {
                             i === index ? { ...v, company: val } : v
                           )
                         );
-                        validateField(`company-${index}`, val);
+
+                        const err = validateFieldUtil(
+                          `company-${index}`,
+                          val,
+                          workType
+                        );
+                        if (!err) {
+                          setErrors((prev) => {
+                            const c = { ...prev };
+                            delete c[`company-${index}`];
+                            return c;
+                          });
+                        } else if (
+                          touched[`company-${index}`] ||
+                          formSubmitted
+                        ) {
+                          setErrors((prev) => ({
+                            ...prev,
+                            [`company-${index}`]: err,
+                          }));
+                        }
                       }}
                       error={errors[`company-${index}`]}
                       required
@@ -1099,7 +962,27 @@ const ResumePage = () => {
                             i === index ? { ...v, noticePeriod: val } : v
                           )
                         );
-                        validateField(`noticePeriod-${index}`, val);
+
+                        const err = validateFieldUtil(
+                          `noticePeriod-${index}`,
+                          val,
+                          workType
+                        );
+                        if (!err) {
+                          setErrors((prev) => {
+                            const c = { ...prev };
+                            delete c[`noticePeriod-${index}`];
+                            return c;
+                          });
+                        } else if (
+                          touched[`noticePeriod-${index}`] ||
+                          formSubmitted
+                        ) {
+                          setErrors((prev) => ({
+                            ...prev,
+                            [`noticePeriod-${index}`]: err,
+                          }));
+                        }
                       }}
                       error={errors[`noticePeriod-${index}`]}
                       required
@@ -1125,11 +1008,17 @@ const ResumePage = () => {
                         }));
                         // Validate against endDate if it exists
                         if (exp.endDate) {
-                          validateExperienceDates(
+                          const msg = validateExperienceDatesUtil(
                             index,
                             newStartDate,
                             exp.endDate
                           );
+                          setErrors((prev) => {
+                            const copy = { ...prev };
+                            if (msg) copy[`endDate-${index}`] = msg;
+                            else delete copy[`endDate-${index}`];
+                            return copy;
+                          });
                         }
                         // validate the startDate field itself (debounced)
                         scheduleValidate(`startDate-${index}`, newStartDate);
@@ -1155,11 +1044,17 @@ const ResumePage = () => {
                           [`endDate-${index}`]: true,
                         }));
                         // Validate against startDate in real-time
-                        validateExperienceDates(
+                        const msg = validateExperienceDatesUtil(
                           index,
                           exp.startDate,
                           newEndDate
                         );
+                        setErrors((prev) => {
+                          const copy = { ...prev };
+                          if (msg) copy[`endDate-${index}`] = msg;
+                          else delete copy[`endDate-${index}`];
+                          return copy;
+                        });
                         scheduleValidate(`endDate-${index}`, newEndDate);
                       }}
                       error={errors[`endDate-${index}`]}
@@ -1244,9 +1139,15 @@ const ResumePage = () => {
                       name={`degree-${index}`}
                       value={edu.degree}
                       onChange={(e) => {
+                        const val = e.target.value;
                         const updated = [...educationList];
-                        updated[index].degree = e.target.value;
+                        updated[index].degree = val;
                         setEducationList(updated);
+                        setTouched((t) => ({
+                          ...t,
+                          [`degree-${index}`]: true,
+                        }));
+                        scheduleValidate(`degree-${index}`, val);
                       }}
                       error={errors[`degree-${index}`]}
                       required
@@ -1257,9 +1158,15 @@ const ResumePage = () => {
                       name={`university-${index}`}
                       value={edu.university}
                       onChange={(e) => {
+                        const val = e.target.value;
                         const updated = [...educationList];
-                        updated[index].university = e.target.value;
+                        updated[index].university = val;
                         setEducationList(updated);
+                        setTouched((t) => ({
+                          ...t,
+                          [`university-${index}`]: true,
+                        }));
+                        scheduleValidate(`university-${index}`, val);
                       }}
                       error={errors[`university-${index}`]}
                       required
@@ -1270,9 +1177,15 @@ const ResumePage = () => {
                       name={`passingYear-${index}`}
                       value={edu.passingYear}
                       onChange={(e) => {
+                        const val = e.target.value;
                         const updated = [...educationList];
-                        updated[index].passingYear = e.target.value;
+                        updated[index].passingYear = val;
                         setEducationList(updated);
+                        setTouched((t) => ({
+                          ...t,
+                          [`passingYear-${index}`]: true,
+                        }));
+                        scheduleValidate(`passingYear-${index}`, val);
                       }}
                       error={errors[`passingYear-${index}`]}
                       required
@@ -1525,12 +1438,24 @@ const ResumePage = () => {
 
           <button
             type="submit"
-            className="submit-btn 
-              w-full h-12 bg-[#72B76A] text-white rounded-xl 
-              font-semibold text-lg transition active:scale-95
-            "
+            disabled={loading}
+            className={`submit-btn 
+              w-full h-12 ${
+                loading
+                  ? "bg-[#5e9b55] opacity-90 cursor-not-allowed"
+                  : "bg-[#72B76A]"
+              } text-white rounded-xl 
+              font-semibold text-lg transition active:scale-95 flex items-center justify-center gap-2
+            `}
           >
-            Submit
+            {loading ? (
+              <>
+                <span className="w-4 h-4 border-2 border-white rounded-full border-t-transparent animate-spin" />
+                <span>Submitting...</span>
+              </>
+            ) : (
+              "Submit"
+            )}
           </button>
         </form>
       </div>
