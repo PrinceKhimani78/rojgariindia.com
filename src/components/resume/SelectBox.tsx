@@ -1,4 +1,12 @@
-const SelectBox = ({ label, name, value, onChange, options, error }) => {
+const SelectBox = ({
+  label,
+  name,
+  value,
+  onChange,
+  options,
+  error,
+  required = false,
+}) => {
   return (
     <div className="relative w-full">
       <select
@@ -54,6 +62,7 @@ const SelectBox = ({ label, name, value, onChange, options, error }) => {
         `}
       >
         {label}
+        {required && <span className="text-red-500 ml-1">*</span>}
       </label>
 
       {error && <p className="text-red-500 text-xs mt-1">{error}</p>}

@@ -3,7 +3,6 @@
 import React, { useState, useEffect, useCallback } from "react";
 import Image from "next/image";
 import Particles from "react-tsparticles";
-import { FiMail } from "react-icons/fi";
 import { z } from "zod";
 import BgVideo from "@/components/resume/BgVideo";
 import Popup from "@/components/resume/Popup";
@@ -18,23 +17,18 @@ import {
   skillSchema,
   resumeSchema,
 } from "@/schemas/resumeSchemas";
+import { useGlobalUI } from "@/components/global/GlobalUIProvider";
+import UI_MESSAGES from "@/constants/uiMessages";
+import {
+  initialForm,
+  normalizeIndianPhone,
+  validateField as validateFieldUtil,
+  validateForm as validateFormUtil,
+  validateExperienceDates as validateExperienceDatesUtil,
+} from "@/utils/formValidation";
+import { sendOtp, verifyOtp } from "@/services/otpService";
+
 const phoneRegex = /^(?:\+91[-\s]?)?(?:\d{10}|\d{5}\s?\d{5})$/;
-const normalizeIndianPhone = (input: string) => {
-  const digits = input.replace(/\D/g, ""); // remove non-digits
-
-  // If number starts with 91 and total is 12 digits → treat as +91XXXXXXXXXX
-  if (digits.length === 12 && digits.startsWith("91")) {
-    return `+${digits}`;
-  }
-
-  // If user entered only 10 digits → prepend +91
-  if (digits.length === 10) {
-    return `+91${digits}`;
-  }
-
-  // Anything else → return raw so validation can catch it
-  return input;
-};
 
 type IndiaJson = {
   [state: string]: {
@@ -58,6 +52,7 @@ type ExperienceEntry = {
 const ResumePage = () => {
   const [duplicateError, setDuplicateError] = useState("");
   const [isClient, setIsClient] = useState(false);
+  const { showSnackbar } = useGlobalUI();
   const [workType, setWorkType] = useState<WorkType>("experienced");
   const [indiaData, setIndiaData] = useState<IndiaJson | null>(null);
 
@@ -69,33 +64,16 @@ const ResumePage = () => {
   const [otp, setOtp] = useState("");
   const [isVerified, setIsVerified] = useState(false);
   const [errors, setErrors] = useState<Record<string, string>>({});
+  const [touched, setTouched] = useState<Record<string, boolean>>({});
+  const [formSubmitted, setFormSubmitted] = useState(false);
+  const [loading, setLoading] = useState(false);
 
-  const [form, setForm] = useState({
-    firstName: "",
-    surName: "",
-    email: "",
-    phone: "",
+  // Timers for debounced validation per-field
+  const validateTimers = React.useRef<
+    Record<string, ReturnType<typeof setTimeout> | null>
+  >({});
 
-    state: "",
-    district: "",
-    city: "",
-    village: "",
-
-    address: "",
-    summary: "",
-
-    availabilityCategory: "",
-    availabilityState: "",
-    availabilityDistrict: "",
-    availabilityCity: "",
-    availabilityVillage: "",
-
-    joiningDate: "",
-    availabilityJobCategory: "",
-    expectedSalaryRange: "",
-    additionalInfo: "",
-    photoUrl: "",
-  });
+  const [form, setForm] = useState(initialForm);
 
   const [experiences, setExperiences] = useState<ExperienceEntry[]>([
     {
@@ -117,6 +95,7 @@ const ResumePage = () => {
   ]);
 
   const [photoPreview, setPhotoPreview] = useState<string | null>(null);
+  const [photoFile, setPhotoFile] = useState<File | null>(null); // Store the actual file
 
   useEffect(() => {
     setIsClient(true);
@@ -128,7 +107,7 @@ const ResumePage = () => {
         const json = (await res.json()) as IndiaJson;
         setIndiaData(json);
       } catch (err) {
-        console.error("Error loading India JSON", err);
+        // failed to load india JSON — ignore in client
       }
     };
 
@@ -138,313 +117,254 @@ const ResumePage = () => {
     setShowPopup(true);
   }, []);
   const handleEmailNext = async () => {
-    if (!form.email) return alert("Enter email");
+    if (!form.email) return alert(UI_MESSAGES.ENTER_EMAIL);
 
     setEmailVerificationLoading(true);
+    setLoading(true);
+    const BACKEND_URL = process.env.NEXT_PUBLIC_BACKEND_API_URL;
 
-    await fetch("/api/send-otp", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ email: form.email }),
-    });
-
-    setEmailVerificationLoading(false);
-    setPopupStep("otp");
+    try {
+      const result = await sendOtp(BACKEND_URL, form.email);
+      if (result.success) {
+        setPopupStep("otp");
+      } else {
+        showSnackbar(result.message || UI_MESSAGES.SERVER_ERROR, "error");
+      }
+    } catch (err) {
+      showSnackbar(UI_MESSAGES.SERVER_ERROR, "error");
+    } finally {
+      setEmailVerificationLoading(false);
+      setLoading(false);
+    }
   };
 
-  const handleChange = useCallback(
-    (
-      e:
-        | React.ChangeEvent<HTMLInputElement>
-        | React.ChangeEvent<HTMLTextAreaElement>
-        | React.ChangeEvent<HTMLSelectElement>
-    ) => {
-      const { name, value } = e.target;
+  // validateExperienceDates moved to utils; page will set/clear errors using the result
 
-      // ------------------------------
-      // SPECIAL CASE: DYNAMIC ARRAY FIELDS
-      // ------------------------------
-      if (name.includes("-")) {
-        const [fieldName, idxStr] = name.split("-");
-        const index = Number(idxStr);
+  const handleChange = (
+    e:
+      | React.ChangeEvent<HTMLInputElement>
+      | React.ChangeEvent<HTMLTextAreaElement>
+      | React.ChangeEvent<HTMLSelectElement>
+  ) => {
+    const { name, value } = e.target;
+    // Mark field as touched (so we show validation only after interaction)
+    setTouched((t) => ({ ...t, [name]: true }));
 
-        // EXPERIENCE FIELDS
-        if (experienceSchema.shape[fieldName]) {
-          setExperiences((prev) =>
-            prev.map((item, i) =>
-              i === index ? { ...item, [fieldName]: value } : item
-            )
-          );
-          validateField(name, value);
-          return;
+    // Clear duplicate email inline error when user edits email (we show the error via toast)
+    if (name === "email") {
+      setDuplicateError("");
+    }
+
+    // ------------------------------
+    // SPECIAL CASE: DYNAMIC ARRAY FIELDS
+    // ------------------------------
+    if (name.includes("-")) {
+      const [fieldName, idxStr] = name.split("-");
+      const index = Number(idxStr);
+
+      // EXPERIENCE FIELDS
+      if (experienceSchema.shape[fieldName]) {
+        setExperiences((prev) =>
+          prev.map((item, i) =>
+            i === index ? { ...item, [fieldName]: value } : item
+          )
+        );
+        // Debounce field validation for UX
+        scheduleValidate(name, value);
+        return;
+      }
+
+      // EDUCATION FIELDS
+      if (educationSchema.shape[fieldName]) {
+        setEducationList((prev) =>
+          prev.map((item, i) =>
+            i === index ? { ...item, [fieldName]: value } : item
+          )
+        );
+        scheduleValidate(name, value);
+        return;
+      }
+
+      // SKILL FIELDS
+      if (skillSchema.shape[fieldName]) {
+        setSkillsList((prev) =>
+          prev.map((item, i) =>
+            i === index ? { ...item, [fieldName]: value } : item
+          )
+        );
+        scheduleValidate(name, value);
+        return;
+      }
+    }
+
+    // ------------------------------
+    // CASCADING SELECT LOGIC (unchanged)
+    // ------------------------------
+    if (name === "state") {
+      setForm((f) => ({
+        ...f,
+        state: value,
+        district: "",
+        city: "",
+        village: "",
+      }));
+      scheduleValidate("state", value);
+      return;
+    }
+
+    if (name === "district") {
+      setForm((f) => ({
+        ...f,
+        district: value,
+        city: "",
+        village: "",
+      }));
+      scheduleValidate("district", value);
+      return;
+    }
+
+    if (name === "city") {
+      setForm((f) => ({
+        ...f,
+        city: value,
+        village: "",
+      }));
+      scheduleValidate("city", value);
+      return;
+    }
+
+    // Availability cascading
+    if (name === "availabilityState") {
+      setForm((f) => ({
+        ...f,
+        availabilityState: value,
+        availabilityDistrict:
+          value === f.availabilityState ? f.availabilityDistrict : "",
+        availabilityCity: "",
+        availabilityVillage: "",
+      }));
+      scheduleValidate("availabilityState", value);
+      return;
+    }
+
+    if (name === "availabilityDistrict") {
+      setForm((f) => ({
+        ...f,
+        availabilityDistrict: value,
+        availabilityCity:
+          value === f.availabilityDistrict ? f.availabilityCity : "",
+        availabilityVillage: "",
+      }));
+      scheduleValidate("availabilityDistrict", value);
+      return;
+    }
+
+    if (name === "availabilityCity") {
+      setForm((f) => ({
+        ...f,
+        availabilityCity: value,
+        availabilityVillage:
+          value === f.availabilityCity ? f.availabilityVillage : "",
+      }));
+      scheduleValidate("availabilityCity", value);
+      return;
+    }
+
+    if (name === "phone") {
+      const formatted = normalizeIndianPhone(value);
+
+      setForm((prev) => ({
+        ...prev,
+        phone: formatted,
+      }));
+
+      scheduleValidate("phone", formatted);
+      return;
+    }
+
+    // ------------------------------
+    // DEFAULT NORMAL FIELD UPDATE
+    // ------------------------------
+    setForm((prev) => ({ ...prev, [name]: value }));
+
+    // ------------------------------
+    // REAL-TIME VALIDATION (debounced)
+    // ------------------------------
+    scheduleValidate(name, value);
+  };
+
+  // Schedule a debounced validateField call per field
+  const scheduleValidate = (name: string, value: unknown, ms = 220) => {
+    // clear existing
+    const prev = validateTimers.current[name];
+    if (prev) clearTimeout(prev as ReturnType<typeof setTimeout>);
+
+    validateTimers.current[name] = setTimeout(() => {
+      const err = validateFieldUtil(name, value, workType);
+
+      if (err) {
+        // only show error if user interacted or after a submit attempt
+        if (touched[name] || formSubmitted) {
+          setErrors((e) => ({ ...e, [name]: err }));
         }
-
-        // EDUCATION FIELDS
-        if (educationSchema.shape[fieldName]) {
-          setEducationList((prev) =>
-            prev.map((item, i) =>
-              i === index ? { ...item, [fieldName]: value } : item
-            )
-          );
-          validateField(name, value);
-          return;
-        }
-
-        // SKILL FIELDS
-        if (skillSchema.shape[fieldName]) {
-          setSkillsList((prev) =>
-            prev.map((item, i) =>
-              i === index ? { ...item, [fieldName]: value } : item
-            )
-          );
-          validateField(name, value);
-          return;
-        }
+      } else {
+        // clear success unconditionally so corrected values remove errors
+        setErrors((e) => {
+          const copy = { ...e };
+          delete copy[name];
+          return copy;
+        });
       }
 
-      // ------------------------------
-      // CASCADING SELECT LOGIC (unchanged)
-      // ------------------------------
-      if (name === "state") {
-        setForm((f) => ({
-          ...f,
-          state: value,
-          district: "",
-          city: "",
-          village: "",
-        }));
-        validateField("state", value);
-        return;
-      }
-
-      if (name === "district") {
-        setForm((f) => ({
-          ...f,
-          district: value,
-          city: "",
-          village: "",
-        }));
-        validateField("district", value);
-        return;
-      }
-
-      if (name === "city") {
-        setForm((f) => ({
-          ...f,
-          city: value,
-          village: "",
-        }));
-        validateField("city", value);
-        return;
-      }
-
-      // Availability cascading
-      if (name === "availabilityState") {
-        setForm((f) => ({
-          ...f,
-          availabilityState: value,
-          availabilityDistrict:
-            value === f.availabilityState ? f.availabilityDistrict : "",
-          availabilityCity: "",
-          availabilityVillage: "",
-        }));
-        validateField("availabilityState", value);
-        return;
-      }
-
-      if (name === "availabilityDistrict") {
-        setForm((f) => ({
-          ...f,
-          availabilityDistrict: value,
-          availabilityCity:
-            value === f.availabilityDistrict ? f.availabilityCity : "",
-          availabilityVillage: "",
-        }));
-        validateField("availabilityDistrict", value);
-        return;
-      }
-
-      if (name === "availabilityCity") {
-        setForm((f) => ({
-          ...f,
-          availabilityCity: value,
-          availabilityVillage:
-            value === f.availabilityCity ? f.availabilityVillage : "",
-        }));
-        validateField("availabilityCity", value);
-        return;
-      }
-
-      if (name === "phone") {
-        const formatted = normalizeIndianPhone(value);
-
-        setForm((prev) => ({
-          ...prev,
-          phone: formatted,
-        }));
-
-        validateField("phone", formatted);
-        return;
-      }
-
-      // ------------------------------
-      // DEFAULT NORMAL FIELD UPDATE
-      // ------------------------------
-      setForm((prev) => ({ ...prev, [name]: value }));
-
-      // ------------------------------
-      // REAL-TIME VALIDATION
-      // ------------------------------
-      validateField(name, value);
-    },
-    []
-  );
+      validateTimers.current[name] = null;
+    }, ms);
+  };
 
   const handleOtpVerify = async () => {
-    const res = await fetch("/api/verify-otp", {
-      method: "POST",
-      body: JSON.stringify({ email: form.email, otp }),
-    });
+    const BACKEND_URL = process.env.NEXT_PUBLIC_BACKEND_API_URL;
+    setLoading(true);
+    try {
+      const result = await verifyOtp(BACKEND_URL, form.email, otp);
+      if (!result.success) {
+        showSnackbar(UI_MESSAGES.INCORRECT_OTP, "error");
+        return;
+      }
 
-    const data = await res.json();
-    if (!data.success) return alert("Incorrect OTP");
-
-    setIsVerified(true);
-    setTimeout(() => setShowPopup(false), 1500);
+      setIsVerified(true);
+      setTimeout(() => setShowPopup(false), 1500);
+    } catch (err) {
+      showSnackbar(UI_MESSAGES.SERVER_ERROR, "error");
+    } finally {
+      setLoading(false);
+    }
   };
 
   const handlePhoto = useCallback(
     async (e: React.ChangeEvent<HTMLInputElement>) => {
       const file = e.target.files?.[0];
       if (!file) return;
+      // Store the file for later upload
+      setPhotoFile(file);
 
+      // Create preview
       const reader = new FileReader();
       reader.onloadend = () => setPhotoPreview(reader.result as string);
       reader.readAsDataURL(file);
-
-      const formData = new FormData();
-      formData.append("photo", file);
-
-      const upload = await fetch("/api/upload-photo", {
-        method: "POST",
-        body: formData,
-      });
-
-      const data = await upload.json();
-      if (data.success) {
-        setForm((prev) => ({ ...prev, photoUrl: data.url }));
-      }
+      // Photo prepared for preview/upload
     },
     []
   );
-  const validateField = (name: string, value: any) => {
-    try {
-      // ARRAY FIELDS LIKE: fieldName-0
-      if (name.includes("-")) {
-        const [field, indexStr] = name.split("-");
-        const index = Number(indexStr);
+  // validateField and validateForm moved to utils. We'll call them and
+  // set/clear errors here to keep component state local.
 
-        let fieldSchema =
-          experienceSchema.shape[field] ||
-          educationSchema.shape[field] ||
-          skillSchema.shape[field];
-
-        if (!fieldSchema) return;
-
-        // CONDITIONAL:
-        if (workType === "fresher" && experienceSchema.shape[field]) return;
-        if (workType === "experienced" && educationSchema.shape[field]) return;
-
-        z.object({ [field]: fieldSchema }).parse({ [field]: value });
-
-        setErrors((e) => {
-          const copy = { ...e };
-          delete copy[name];
-          return copy;
-        });
-
-        return;
-      }
-
-      // NORMAL FIELDS
-      const schemaField = resumeSchema.shape[name];
-      if (!schemaField) return;
-
-      z.object({ [name]: schemaField }).parse({ [name]: value });
-
-      setErrors((e) => {
-        const copy = { ...e };
-        delete copy[name];
-        return copy;
-      });
-    } catch (err: any) {
-      const msg = err?.errors?.[0]?.message || "Invalid value";
-
-      setErrors((e) => ({
-        ...e,
-        [name]: msg,
-      }));
-    }
-  };
-
-  const validateForm = (payload: any) => {
-    const parsed = resumeSchema.safeParse(payload);
-
-    // DEBUG LOG: shows EXACT failing fields
-    if (!parsed.success) {
-      console.log(
-        "ZOD ERROR:",
-        parsed.error.issues.map((e) => ({
-          path: e.path.join("."),
-          message: e.message,
-        }))
-      );
-    }
-
-    if (parsed.success) {
-      setErrors({});
-      return true;
-    }
-
-    const mapped: Record<string, string> = {};
-
-    parsed.error.issues.forEach((err) => {
-      const path = err.path;
-
-      if (!path.length) return;
-
-      if (path[0] === "experiences") {
-        const [, index, field] = path;
-        const key = `${String(field)}-${String(index)}`;
-        mapped[key] = err.message;
-        return;
-      }
-
-      if (path[0] === "educationList") {
-        const [, index, field] = path;
-        const key = `${String(field)}-${String(index)}`;
-        mapped[key] = err.message;
-        return;
-      }
-
-      if (path[0] === "skillsList") {
-        const [, index, field] = path;
-        const key = `${String(field)}-${String(index)}`;
-        mapped[key] = err.message;
-        return;
-      }
-
-      const key = String(path[0]);
-      mapped[key] = err.message;
-    });
-
-    setErrors(mapped);
-    return false;
-  };
+  // validateForm moved to utils; call validateFormUtil(payload) below in submit
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    // mark that user has attempted to submit - show all validation errors
+    setFormSubmitted(true);
 
+    // Validate first
     const payload = {
       ...form,
       phone: normalizeIndianPhone(form.phone),
@@ -454,38 +374,162 @@ const ResumePage = () => {
       skillsList,
     };
 
-    const isValid = validateForm(payload);
-    if (!isValid) {
+    const vf = validateFormUtil(payload);
+    if (!vf.isValid) {
+      setErrors(vf.errors);
       window.scrollTo({ top: 0, behavior: "smooth" });
       return;
     }
+    // Clear any stale errors if form is valid
+    setErrors({});
 
-    console.log("FINAL SUBMIT PAYLOAD:", payload);
+    // Transform to backend API format
+    const apiPayload = {
+      full_name: form.firstName,
+      surname: form.surName,
+      email: form.email,
+      mobile_number: form.phone.replace(/\D/g, "").slice(-10), // Remove +91 and get last 10 digits
+      gender: "Male", // Default gender, you may want to add a gender field to form
+      address: form.address,
+      state: form.state,
+      city: form.city,
+      country: "India",
+      experienced: workType === "experienced",
+      fresher: workType === "fresher",
+      expected_salary: form.expectedSalaryRange,
+      job_category: form.availabilityJobCategory,
+      current_location: `${form.availabilityCity}, ${form.availabilityState}`,
+      interview_availability: form.availabilityCategory,
+      work_experience: experiences.map((exp) => ({
+        position: exp.position,
+        company: exp.company,
+        start_date: exp.startDate,
+        end_date: exp.endDate || null,
+        salary_period: exp.noticePeriod,
+        is_current: !exp.endDate || exp.endDate === "",
+      })),
+      skills: skillsList.map((skill) => ({
+        skill_name: skill.name,
+        years_of_experience: skill.years,
+      })),
+    };
 
-    let data; // <-- Declare ONLY ONCE
-
-    const res = await fetch("/api/resume", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(payload),
-    });
-
+    const BACKEND_URL = process.env.NEXT_PUBLIC_BACKEND_API_URL;
+    setLoading(true);
     try {
-      data = await res.json();
-    } catch {
-      setDuplicateError("Server error. Please try again.");
-      return;
-    }
+      // Call backend API
+      const res = await fetch(`${BACKEND_URL}/candidate-profile`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(apiPayload),
+      });
 
-    // Handle duplicate name error
-    if (!res.ok) {
-      setDuplicateError(data.message || "Something went wrong");
-      return;
-    }
+      // response received
+      let data;
+      try {
+        data = await res.json();
+        // parsed response
+      } catch {
+        // failed to parse JSON response
+        showSnackbar(UI_MESSAGES.FAILED_PARSE_JSON, "error");
+        setDuplicateError(UI_MESSAGES.SERVER_ERROR);
+        return;
+      }
 
-    // Clear error on success
-    setDuplicateError("");
-    alert("Submitted successfully!");
+      // Handle errors
+      if (!res.ok) {
+        if (res.status === 409) {
+          showSnackbar(data.message || UI_MESSAGES.CONFLICT_EMAIL, "error");
+        } else if (res.status === 500) {
+          showSnackbar(data.message || UI_MESSAGES.SERVER_ERROR, "error");
+        } else {
+          showSnackbar(
+            data.message || UI_MESSAGES.SOMETHING_WENT_WRONG,
+            "error"
+          );
+        }
+        setDuplicateError(data.message || UI_MESSAGES.SOMETHING_WENT_WRONG);
+        return;
+      }
+
+      // Get candidate ID from response
+      const candidateId = data.data.id;
+
+      // Upload photo if file was selected
+      if (photoFile) {
+        try {
+          const photoFormData = new FormData();
+          photoFormData.append("profile_photo", photoFile);
+
+          const uploadRes = await fetch(
+            `${BACKEND_URL}/candidate-profile/${candidateId}/upload`,
+            {
+              method: "POST",
+              body: photoFormData,
+            }
+          );
+
+          if (uploadRes.ok) {
+            await uploadRes.json();
+          } else {
+            const errorData = await uploadRes.json();
+            if (uploadRes.status === 409) {
+              showSnackbar(
+                errorData.message || UI_MESSAGES.PHOTO_UPLOAD_CONFLICT,
+                "error"
+              );
+            } else if (uploadRes.status === 500) {
+              showSnackbar(
+                errorData.message || UI_MESSAGES.PHOTO_UPLOAD_SERVER_ERROR,
+                "error"
+              );
+            } else {
+              showSnackbar(
+                errorData.message || UI_MESSAGES.PHOTO_UPLOAD_FAILED,
+                "error"
+              );
+            }
+          }
+        } catch (photoError) {
+          showSnackbar(UI_MESSAGES.PHOTO_UPLOAD_FAILED, "error");
+        }
+      } else {
+        // no photo selected to upload
+      }
+
+      // Clear error and show success
+      setDuplicateError("");
+      showSnackbar(
+        UI_MESSAGES.PROFILE_CREATED_SUCCESS(form.firstName, form.surName),
+        "success"
+      );
+      // Reset form to initial state after successful creation
+      setForm(initialForm);
+      setTouched({});
+      setFormSubmitted(false);
+      setExperiences([
+        {
+          position: "",
+          company: "",
+          noticePeriod: "",
+          startDate: "",
+          endDate: "",
+          stillWorkingDate: "",
+        },
+      ]);
+      setEducationList([{ degree: "", university: "", passingYear: "" }]);
+      setSkillsList([{ name: "", level: "", years: "" }]);
+      setPhotoPreview(null);
+      setPhotoFile(null);
+      setErrors({});
+      setIsVerified(false);
+      setShowPopup(false);
+    } catch (err) {
+      setDuplicateError(UI_MESSAGES.SERVER_ERROR);
+      showSnackbar(UI_MESSAGES.SERVER_ERROR, "error");
+    } finally {
+      setLoading(false);
+    }
   };
 
   const stateOptions = indiaData ? Object.keys(indiaData) : [];
@@ -527,7 +571,15 @@ const ResumePage = () => {
   if (!isClient) return null;
   // console.log("CURRENT ERRORS --->", errors);
   return (
-    <div className="relative min-h-screen w-full flex justify-center px-4 py-10 overflow-x-hidden">
+    <div className="relative min-h-screen w-full flex justify-center px-4 py-10 overflow-x-hidden bg-gray-50">
+      {loading && (
+        <div className="absolute inset-0 z-50 flex items-center justify-center bg-black/40">
+          <div className="flex flex-col items-center gap-4">
+            <div className="w-14 h-14 border-4 border-white rounded-full border-t-transparent animate-spin"></div>
+            <div className="text-white">Loading...</div>
+          </div>
+        </div>
+      )}
       <Popup open={showPopup} onClose={() => setShowPopup(false)}>
         <div className="flex flex-col items-center gap-4 mb-4">
           <Image
@@ -560,7 +612,7 @@ const ResumePage = () => {
 
       <Particles className="absolute inset-0 -z-10" />
 
-      <div className="w-full max-w-5xl p-2 overflow-x-hidden">
+      <div className="w-full max-w-5xl p-8 overflow-x-hidden bg-white rounded-2xl shadow-lg">
         <div className="flex justify-center mb-6">
           <Image
             src="/images/logo.svg"
@@ -574,7 +626,7 @@ const ResumePage = () => {
         <h2 className="text-3xl font-bold text-gray-800 text-center mb-8">
           Create Your Rojgari Profile
         </h2>
-        <form onSubmit={handleSubmit} className="space-y-10 text-gray-400">
+        <form onSubmit={handleSubmit} className="space-y-10 text-gray-800">
           {/* Personal Info */}
           <>
             <h3 className="text-lg font-semibold text-gray-800">
@@ -588,6 +640,7 @@ const ResumePage = () => {
                 value={form.firstName}
                 onChange={handleChange}
                 error={errors.firstName}
+                required
               />
               <InputBox
                 label="Surname"
@@ -595,16 +648,10 @@ const ResumePage = () => {
                 value={form.surName}
                 onChange={handleChange}
                 error={errors.surName}
+                required
               />
 
-              <label
-                className="
-                  w-full h-[45px] sm:h-auto bg-white/10
-                  border border-gray-300 rounded-xl 
-                  flex items-center justify-center cursor-pointer text-gray-400 
-                  overflow-hidden row-span-1 md:row-span-3
-                "
-              >
+              <label className="w-full h-[45px] sm:h-auto bg-white/10 border border-gray-300 rounded-xl flex items-center justify-center cursor-pointer text-gray-400 overflow-hidden row-span-1 md:row-span-3">
                 {photoPreview ? (
                   <Image
                     src={photoPreview}
@@ -632,6 +679,7 @@ const ResumePage = () => {
                 value={form.email}
                 onChange={handleChange}
                 error={errors.email}
+                required
               />
               <InputBox
                 label="Mobile Number"
@@ -639,6 +687,7 @@ const ResumePage = () => {
                 value={form.phone}
                 onChange={handleChange}
                 error={errors.phone}
+                required
               />
 
               <SelectBox
@@ -683,42 +732,39 @@ const ResumePage = () => {
                 error={errors.address}
               />
 
-              <div className="lg:col-span-3 h-28 relative">
-                <textarea
-                  name="summary"
-                  value={form.summary}
-                  onChange={handleChange}
-                  placeholder=" "
-                  className={`
-      peer w-full h-full bg-white outline-none px-4 pt-6 pb-2 rounded-xl 
-      text-base border resize-none
-       focus:border-[#72B76A] focus:ring-1 focus:ring-[#72B76A]
-      ${errors.summary ? "border-red-500" : "border-gray-300"}
-    `}
-                ></textarea>
+              <div className="lg:col-span-3">
+                <div className="relative w-full h-28">
+                  <textarea
+                    name="summary"
+                    value={form.summary}
+                    onChange={handleChange}
+                    placeholder=" "
+                    className={`peer w-full px-4 pt-6 pb-2 rounded-xl bg-white
+                      border outline-none transition-all
+                      ${errors.summary ? "border-red-500" : "border-gray-300"}
+                      focus:border-[#72B76A] focus:ring-1 focus:ring-[#72B76A]
+                      resize-none h-full`}
+                  />
 
-                <label
-                  htmlFor="summary"
-                  className="
-      absolute left-4 bg-white px-2 text-gray-400
-      transition-all duration-150 pointer-events-none
-      top-1/2 -translate-y-1/2
-      peer-focus:top-1 peer-focus:-translate-y-1/2 peer-focus:text-sm peer-focus:text-[#72B76A]
-      peer-placeholder-shown:top-1/2 peer-placeholder-shown:-translate-y-1/2 peer-placeholder-shown:text-base
-      peer-not-placeholder-shown:top-1 peer-not-placeholder-shown:-translate-y-1/2 peer-not-placeholder-shown:text-sm peer-not-placeholder-shown:text-gray-400
-    "
-                >
-                  Summary
-                </label>
-                {errors.summary && (
-                  <p className="text-red-500 text-xs mt-1">{errors.summary}</p>
-                )}
+                  <label
+                    className={`absolute left-4 px-1 bg-white text-gray-500 pointer-events-none
+                      transition-all duration-150
+                      top-1/2 -translate-y-1/2
+                      peer-focus:top-1 peer-focus:-translate-y-1/2 peer-focus:text-sm peer-focus:text-[#72B76A]
+                      peer-placeholder-shown:top-1/2 peer-placeholder-shown:-translate-y-1/2 peer-placeholder-shown:text-base
+                      peer-not-placeholder-shown:top-1 peer-not-placeholder-shown:-translate-y-1/2 peer-not-placeholder-shown:text-sm peer-not-placeholder-shown:text-[#72B76A]`}
+                  >
+                    Summary
+                  </label>
+                  {errors.summary && (
+                    <p className="text-red-500 text-xs mt-1">
+                      {errors.summary}
+                    </p>
+                  )}
+                </div>
               </div>
             </div>
-            {/* INLINE DUPLICATE ERROR SHOWING HERE */}
-            {duplicateError && (
-              <p className="text-red-500 text-sm mt-1">{duplicateError}</p>
-            )}
+            {/* duplicateError is shown via global toast; do not render inline */}
           </>
 
           {/* Work Type Toggle */}
@@ -747,6 +793,20 @@ const ResumePage = () => {
 
                 // Education is NOT required for experienced → clear it
                 setEducationList([]);
+                // Remove any education-related validation errors when switching
+                setErrors((prev) => {
+                  const copy = { ...prev };
+                  Object.keys(copy).forEach((k) => {
+                    if (
+                      k.startsWith("degree-") ||
+                      k.startsWith("university-") ||
+                      k.startsWith("passingYear-")
+                    ) {
+                      delete copy[k];
+                    }
+                  });
+                  return copy;
+                });
               }}
               className={`
       w-full h-12 rounded-lg transition
@@ -775,6 +835,23 @@ const ResumePage = () => {
 
                 // Experience is NOT required for fresher → clear it
                 setExperiences([]);
+                // Remove any experience-related validation errors when switching
+                setErrors((prev) => {
+                  const copy = { ...prev };
+                  Object.keys(copy).forEach((k) => {
+                    if (
+                      k.startsWith("position-") ||
+                      k.startsWith("company-") ||
+                      k.startsWith("noticePeriod-") ||
+                      k.startsWith("startDate-") ||
+                      k.startsWith("endDate-") ||
+                      k.startsWith("stillWorkingDate-")
+                    ) {
+                      delete copy[k];
+                    }
+                  });
+                  return copy;
+                });
               }}
               className={`
       w-full h-12 rounded-lg transition
@@ -807,42 +884,108 @@ const ResumePage = () => {
                       name={`position-${index}`}
                       value={exp.position}
                       onChange={(e) => {
+                        const val = e.target.value;
                         setExperiences((p) =>
                           p.map((v, i) =>
-                            i === index ? { ...v, position: e.target.value } : v
+                            i === index ? { ...v, position: val } : v
                           )
                         );
-                        validateField(`position-${index}`, e.target.value);
+
+                        const err = validateFieldUtil(
+                          `position-${index}`,
+                          val,
+                          workType
+                        );
+                        if (!err) {
+                          setErrors((prev) => {
+                            const c = { ...prev };
+                            delete c[`position-${index}`];
+                            return c;
+                          });
+                        } else if (
+                          touched[`position-${index}`] ||
+                          formSubmitted
+                        ) {
+                          setErrors((prev) => ({
+                            ...prev,
+                            [`position-${index}`]: err,
+                          }));
+                        }
                       }}
                       error={errors[`position-${index}`]}
+                      required
                     />
                     <InputBox
                       label="Company"
                       name={`company-${index}`}
                       value={exp.company}
-                      onChange={(e) =>
+                      onChange={(e) => {
+                        const val = e.target.value;
                         setExperiences((p) =>
                           p.map((v, i) =>
-                            i === index ? { ...v, company: e.target.value } : v
+                            i === index ? { ...v, company: val } : v
                           )
-                        )
-                      }
+                        );
+
+                        const err = validateFieldUtil(
+                          `company-${index}`,
+                          val,
+                          workType
+                        );
+                        if (!err) {
+                          setErrors((prev) => {
+                            const c = { ...prev };
+                            delete c[`company-${index}`];
+                            return c;
+                          });
+                        } else if (
+                          touched[`company-${index}`] ||
+                          formSubmitted
+                        ) {
+                          setErrors((prev) => ({
+                            ...prev,
+                            [`company-${index}`]: err,
+                          }));
+                        }
+                      }}
                       error={errors[`company-${index}`]}
+                      required
                     />
                     <InputBox
                       label="Notice Period"
                       name={`noticePeriod-${index}`}
                       value={exp.noticePeriod}
-                      onChange={(e) =>
+                      onChange={(e) => {
+                        const val = e.target.value;
                         setExperiences((p) =>
                           p.map((v, i) =>
-                            i === index
-                              ? { ...v, noticePeriod: e.target.value }
-                              : v
+                            i === index ? { ...v, noticePeriod: val } : v
                           )
-                        )
-                      }
+                        );
+
+                        const err = validateFieldUtil(
+                          `noticePeriod-${index}`,
+                          val,
+                          workType
+                        );
+                        if (!err) {
+                          setErrors((prev) => {
+                            const c = { ...prev };
+                            delete c[`noticePeriod-${index}`];
+                            return c;
+                          });
+                        } else if (
+                          touched[`noticePeriod-${index}`] ||
+                          formSubmitted
+                        ) {
+                          setErrors((prev) => ({
+                            ...prev,
+                            [`noticePeriod-${index}`]: err,
+                          }));
+                        }
+                      }}
                       error={errors[`noticePeriod-${index}`]}
+                      required
                     />
                   </div>
 
@@ -851,29 +994,69 @@ const ResumePage = () => {
                       label="Start Date"
                       name={`startDate-${index}`}
                       value={exp.startDate}
-                      onChange={(e) =>
+                      onChange={(e) => {
+                        const newStartDate = e.target.value;
                         setExperiences((p) =>
                           p.map((v, i) =>
-                            i === index
-                              ? { ...v, startDate: e.target.value }
-                              : v
+                            i === index ? { ...v, startDate: newStartDate } : v
                           )
-                        )
-                      }
+                        );
+                        // mark touched for this array field
+                        setTouched((t) => ({
+                          ...t,
+                          [`startDate-${index}`]: true,
+                        }));
+                        // Validate against endDate if it exists
+                        if (exp.endDate) {
+                          const msg = validateExperienceDatesUtil(
+                            index,
+                            newStartDate,
+                            exp.endDate
+                          );
+                          setErrors((prev) => {
+                            const copy = { ...prev };
+                            if (msg) copy[`endDate-${index}`] = msg;
+                            else delete copy[`endDate-${index}`];
+                            return copy;
+                          });
+                        }
+                        // validate the startDate field itself (debounced)
+                        scheduleValidate(`startDate-${index}`, newStartDate);
+                      }}
                       error={errors[`startDate-${index}`]}
+                      required
                     />
 
                     <DatePicker
                       label="End Date"
                       name={`endDate-${index}`}
                       value={exp.endDate}
-                      onChange={(e) =>
+                      onChange={(e) => {
+                        const newEndDate = e.target.value;
                         setExperiences((prev) =>
                           prev.map((v, i) =>
-                            i === index ? { ...v, endDate: e.target.value } : v
+                            i === index ? { ...v, endDate: newEndDate } : v
                           )
-                        )
-                      }
+                        );
+                        // mark touched and validate
+                        setTouched((t) => ({
+                          ...t,
+                          [`endDate-${index}`]: true,
+                        }));
+                        // Validate against startDate in real-time
+                        const msg = validateExperienceDatesUtil(
+                          index,
+                          exp.startDate,
+                          newEndDate
+                        );
+                        setErrors((prev) => {
+                          const copy = { ...prev };
+                          if (msg) copy[`endDate-${index}`] = msg;
+                          else delete copy[`endDate-${index}`];
+                          return copy;
+                        });
+                        scheduleValidate(`endDate-${index}`, newEndDate);
+                      }}
                       error={errors[`endDate-${index}`]}
                     />
 
@@ -881,15 +1064,19 @@ const ResumePage = () => {
                       label="Still Working From"
                       name={`stillWorkingDate-${index}`}
                       value={exp.stillWorkingDate}
-                      onChange={(e) =>
+                      onChange={(e) => {
+                        const val = e.target.value;
                         setExperiences((prev) =>
                           prev.map((v, i) =>
-                            i === index
-                              ? { ...v, stillWorkingDate: e.target.value }
-                              : v
+                            i === index ? { ...v, stillWorkingDate: val } : v
                           )
-                        )
-                      }
+                        );
+                        setTouched((t) => ({
+                          ...t,
+                          [`stillWorkingDate-${index}`]: true,
+                        }));
+                        scheduleValidate(`stillWorkingDate-${index}`, val);
+                      }}
                       error={errors[`stillWorkingDate-${index}`]}
                     />
                   </div>
@@ -952,11 +1139,18 @@ const ResumePage = () => {
                       name={`degree-${index}`}
                       value={edu.degree}
                       onChange={(e) => {
+                        const val = e.target.value;
                         const updated = [...educationList];
-                        updated[index].degree = e.target.value;
+                        updated[index].degree = val;
                         setEducationList(updated);
+                        setTouched((t) => ({
+                          ...t,
+                          [`degree-${index}`]: true,
+                        }));
+                        scheduleValidate(`degree-${index}`, val);
                       }}
                       error={errors[`degree-${index}`]}
+                      required
                     />
 
                     <InputBox
@@ -964,11 +1158,18 @@ const ResumePage = () => {
                       name={`university-${index}`}
                       value={edu.university}
                       onChange={(e) => {
+                        const val = e.target.value;
                         const updated = [...educationList];
-                        updated[index].university = e.target.value;
+                        updated[index].university = val;
                         setEducationList(updated);
+                        setTouched((t) => ({
+                          ...t,
+                          [`university-${index}`]: true,
+                        }));
+                        scheduleValidate(`university-${index}`, val);
                       }}
                       error={errors[`university-${index}`]}
+                      required
                     />
 
                     <InputBox
@@ -976,11 +1177,18 @@ const ResumePage = () => {
                       name={`passingYear-${index}`}
                       value={edu.passingYear}
                       onChange={(e) => {
+                        const val = e.target.value;
                         const updated = [...educationList];
-                        updated[index].passingYear = e.target.value;
+                        updated[index].passingYear = val;
                         setEducationList(updated);
+                        setTouched((t) => ({
+                          ...t,
+                          [`passingYear-${index}`]: true,
+                        }));
+                        scheduleValidate(`passingYear-${index}`, val);
                       }}
                       error={errors[`passingYear-${index}`]}
+                      required
                     />
                   </div>
 
@@ -1039,11 +1247,15 @@ const ResumePage = () => {
                     name={`name-${index}`}
                     value={skill.name}
                     onChange={(e) => {
+                      const val = e.target.value;
                       const updated = [...skillsList];
-                      updated[index].name = e.target.value;
+                      updated[index].name = val;
                       setSkillsList(updated);
+                      setTouched((t) => ({ ...t, [`name-${index}`]: true }));
+                      scheduleValidate(`name-${index}`, val);
                     }}
                     error={errors[`name-${index}`]}
+                    required
                   />
 
                   <SelectBox
@@ -1052,11 +1264,15 @@ const ResumePage = () => {
                     value={skill.level}
                     options={["Beginner", "Intermediate", "Expert"]}
                     onChange={(e) => {
+                      const val = e.target.value;
                       const updated = [...skillsList];
-                      updated[index].level = e.target.value;
+                      updated[index].level = val;
                       setSkillsList(updated);
+                      setTouched((t) => ({ ...t, [`level-${index}`]: true }));
+                      scheduleValidate(`level-${index}`, val);
                     }}
                     error={errors[`level-${index}`]}
+                    required
                   />
 
                   <InputBox
@@ -1064,11 +1280,15 @@ const ResumePage = () => {
                     name={`years-${index}`}
                     value={skill.years}
                     onChange={(e) => {
+                      const val = e.target.value;
                       const updated = [...skillsList];
-                      updated[index].years = e.target.value;
+                      updated[index].years = val;
                       setSkillsList(updated);
+                      setTouched((t) => ({ ...t, [`years-${index}`]: true }));
+                      scheduleValidate(`years-${index}`, val);
                     }}
                     error={errors[`years-${index}`]}
+                    required
                   />
                 </div>
 
@@ -1218,12 +1438,24 @@ const ResumePage = () => {
 
           <button
             type="submit"
-            className="submit-btn 
-              w-full h-12 bg-[#72B76A] text-white rounded-xl 
-              font-semibold text-lg transition active:scale-95
-            "
+            disabled={loading}
+            className={`submit-btn 
+              w-full h-12 ${
+                loading
+                  ? "bg-[#5e9b55] opacity-90 cursor-not-allowed"
+                  : "bg-[#72B76A]"
+              } text-white rounded-xl 
+              font-semibold text-lg transition active:scale-95 flex items-center justify-center gap-2
+            `}
           >
-            Submit
+            {loading ? (
+              <>
+                <span className="w-4 h-4 border-2 border-white rounded-full border-t-transparent animate-spin" />
+                <span>Submitting...</span>
+              </>
+            ) : (
+              "Submit"
+            )}
           </button>
         </form>
       </div>

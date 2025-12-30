@@ -1,4 +1,12 @@
-const InputBox = ({ label, name, value, onChange, type = "text", error }) => {
+const InputBox = ({
+  label,
+  name,
+  value,
+  onChange,
+  type = "text",
+  error,
+  required = false,
+}) => {
   return (
     <div className="relative w-full">
       <input
@@ -26,6 +34,7 @@ const InputBox = ({ label, name, value, onChange, type = "text", error }) => {
         `}
       >
         {label}
+        {required && <span className="text-red-500 ml-1">*</span>}
       </label>
       {error && <p className="text-red-500 text-xs mt-1">{error}</p>}
     </div>
