@@ -3,7 +3,7 @@ type OtpResult = { success: boolean; message?: string; data?: any };
 export async function sendOtp(backendUrl: string | undefined, email: string): Promise<OtpResult> {
   if (!backendUrl) return { success: false, message: "Backend URL not configured" };
   try {
-    const res = await fetch(`${backendUrl}/otp/send-otp`, {
+    const res = await fetch(`${backendUrl}/send-otp`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ email }),
@@ -14,7 +14,7 @@ export async function sendOtp(backendUrl: string | undefined, email: string): Pr
       try {
         const d = await res.json();
         msg = d.message || msg;
-      } catch {}
+      } catch { }
       return { success: false, message: msg };
     }
 
@@ -27,7 +27,7 @@ export async function sendOtp(backendUrl: string | undefined, email: string): Pr
 export async function verifyOtp(backendUrl: string | undefined, email: string, otp: string): Promise<OtpResult> {
   if (!backendUrl) return { success: false, message: "Backend URL not configured" };
   try {
-    const res = await fetch(`${backendUrl}/otp/verify-otp`, {
+    const res = await fetch(`${backendUrl}/verify-otp`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ email, otp }),
