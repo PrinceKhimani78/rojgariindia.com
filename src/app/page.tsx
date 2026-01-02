@@ -13,6 +13,7 @@ import {
   FaCheckCircle,
   FaWhatsapp,
 } from "react-icons/fa";
+import Link from "next/link";
 
 /* ✅ Success Animation Component */
 function SuccessAnim() {
@@ -133,7 +134,7 @@ export default function ComingSoon() {
       />
 
       {/* 🌟 Main Content */}
-      <div className="relative z-10 flex flex-col items-center text-center w-full max-w-[95%]">
+      <div className="relative z-10 flex flex-col items-center text-center w-full max-w-[95%] py-10">
         {/* logo */}
         <motion.div
           initial={{ opacity: 0, y: -30 }}
@@ -274,34 +275,62 @@ export default function ComingSoon() {
           className="flex gap-5 sm:gap-6 mt-10 sm:mt-10 text-xl sm:text-2xl"
         >
           <a
-            href="#"
+            href="https://www.instagram.com/rojgariindia/"
+            target="_blank"
+            rel="noopener noreferrer"
             className="transition text-[#000000] hover:text-[#E1306C]"
             aria-label="Instagram"
           >
             <FaInstagram />
           </a>
           <a
-            href="#"
+            href="https://www.linkedin.com/company/rojgariindia/"
+            target="_blank"
+            rel="noopener noreferrer"
             className="transition text-[#000000] hover:text-[#0077B5]"
             aria-label="LinkedIn"
           >
             <FaLinkedin />
           </a>
           <a
-            href="#"
+            href="https://www.facebook.com/share/1ACWMEKGH8/"
+            target="_blank"
+            rel="noopener noreferrer"
             className="transition text-[#000000] hover:text-[#1877F2]"
             aria-label="Facebook"
           >
             <FaFacebook />
           </a>
           <a
-            href="#"
+            href="https://wa.me/917201080009?text=Hello,%20I%20would%20like%20to%20know%20more%20about%20your%20services"
+            target="_blank"
+            rel="noopener noreferrer"
             className="transition text-[#000000] hover:text-[#25D366]"
             aria-label="WhatsApp"
           >
             <FaWhatsapp />
           </a>
         </motion.div>
+
+        {/* QR code */}
+
+        <Link href="/candidate-resume-form">
+          <motion.div
+            initial={{ y: 30, opacity: 0 }}
+            animate={{ y: 0, opacity: 1 }}
+            transition={{ delay: 2, duration: 0.8 }}
+            className="fixed right-5 bottom-2 animate-bounce bg-white rounded-lg shadow-sm p-2"
+          >
+            <Image
+              src="/images/QR.png"
+              alt="Rojgari India"
+              width={80}
+              height={80}
+              className=""
+            />
+            <p>Click Here!</p>
+          </motion.div>
+        </Link>
       </div>
 
       <style jsx>{`

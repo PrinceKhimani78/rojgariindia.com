@@ -571,7 +571,7 @@ const ResumePage = () => {
   if (!isClient) return null;
   // console.log("CURRENT ERRORS --->", errors);
   return (
-    <div className="relative min-h-screen w-full flex justify-center px-4 py-10 overflow-x-hidden bg-gray-50">
+    <div className="relative min-h-screen w-full flex justify-center px-4 py-10 overflow-x-hidden">
       {loading && (
         <div className="absolute inset-0 z-50 flex items-center justify-center bg-black/40">
           <div className="flex flex-col items-center gap-4">
@@ -580,7 +580,16 @@ const ResumePage = () => {
           </div>
         </div>
       )}
-      <Popup open={showPopup} onClose={() => setShowPopup(false)}>
+      <Popup
+        open={showPopup}
+        onClose={() => setShowPopup(false)}
+        // onClose={() => {
+        //   if (popupStep === "email" && !form.email?.trim()) {
+        //     return;
+        //   }
+        //   setShowPopup(false);
+        // }}
+      >
         <div className="flex flex-col items-center gap-4 mb-4">
           <Image
             src="/images/logo.svg"
@@ -612,7 +621,7 @@ const ResumePage = () => {
 
       <Particles className="absolute inset-0 -z-10" />
 
-      <div className="w-full max-w-5xl p-8 overflow-x-hidden bg-white rounded-2xl shadow-lg">
+      <div className="w-full max-w-5xl p-8 overflow-x-hidden bg-white rounded-2xl shadow-md">
         <div className="flex justify-center mb-6">
           <Image
             src="/images/logo.svg"
@@ -670,6 +679,7 @@ const ResumePage = () => {
                   accept="image/*"
                   onChange={handlePhoto}
                   className="hidden"
+                  required
                 />
               </label>
 
@@ -697,6 +707,7 @@ const ResumePage = () => {
                 options={stateOptions}
                 onChange={handleChange}
                 error={errors.state}
+                required
               />
               <SelectBox
                 label="District"
@@ -705,6 +716,7 @@ const ResumePage = () => {
                 options={districtOptions}
                 onChange={handleChange}
                 error={errors.district}
+                required
               />
               <SelectBox
                 label="City"
@@ -713,6 +725,7 @@ const ResumePage = () => {
                 options={cityOptions}
                 onChange={handleChange}
                 error={errors.city}
+                required
               />
 
               <SelectBox
@@ -730,6 +743,7 @@ const ResumePage = () => {
                 value={form.address}
                 onChange={handleChange}
                 error={errors.address}
+                required
               />
 
               <div className="lg:col-span-3">
@@ -916,7 +930,7 @@ const ResumePage = () => {
                       required
                     />
                     <InputBox
-                      label="Company"
+                      label="Company Name"
                       name={`company-${index}`}
                       value={exp.company}
                       onChange={(e) => {
@@ -1061,7 +1075,7 @@ const ResumePage = () => {
                     />
 
                     <DatePicker
-                      label="Still Working From"
+                      label="Still Working For"
                       name={`stillWorkingDate-${index}`}
                       value={exp.stillWorkingDate}
                       onChange={(e) => {
@@ -1234,7 +1248,7 @@ const ResumePage = () => {
 
           {/* Skills */}
           <div className="space-y-4">
-            <h3 className="text-lg font-semibold text-gray-800">Skills</h3>
+            <h3 className="text-lg font-semibold text-gray-800">Your Skills</h3>
 
             {skillsList.map((skill, index) => (
               <div
@@ -1243,7 +1257,7 @@ const ResumePage = () => {
               >
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                   <InputBox
-                    label="Skill Name"
+                    label="Skill"
                     name={`name-${index}`}
                     value={skill.name}
                     onChange={(e) => {
@@ -1328,7 +1342,7 @@ const ResumePage = () => {
           {/* Availability */}
           <div className="space-y-4">
             <h3 className="text-lg font-semibold text-gray-800">
-              Availability
+              Availability & Preferred Location
             </h3>
 
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
@@ -1339,6 +1353,7 @@ const ResumePage = () => {
                 options={["Part-Time", "Full-Time", "Contract", "Internship"]}
                 onChange={handleChange}
                 error={errors.availabilityCategory}
+                required
               />
 
               <SelectBox
@@ -1348,6 +1363,7 @@ const ResumePage = () => {
                 options={availabilityStateOptions}
                 onChange={handleChange}
                 error={errors.availabilityState}
+                required
               />
 
               <SelectBox
@@ -1357,6 +1373,7 @@ const ResumePage = () => {
                 options={availabilityDistrictOptions}
                 onChange={handleChange}
                 error={errors.availabilityDistrict}
+                required
               />
 
               <SelectBox
@@ -1366,6 +1383,7 @@ const ResumePage = () => {
                 options={availabilityCityOptions}
                 onChange={handleChange}
                 error={errors.availabilityCity}
+                required
               />
 
               <SelectBox
@@ -1391,29 +1409,138 @@ const ResumePage = () => {
                 value={form.joiningDate}
                 onChange={handleChange}
                 error={errors.joiningDate}
+                required
               />
 
               <SelectBox
                 label="Job Category"
                 name="availabilityJobCategory"
                 value={form.availabilityJobCategory}
+                required
                 options={[
-                  "IT & Software",
-                  "Tech Support",
-                  "Doctors",
-                  "Nurses",
-                  "Teachers",
-                  "Marketing",
-                  "Sales",
+                  // Healthcare
+                  "Doctor",
+                  "Nurse",
+                  "Pharmacist",
+                  "Lab Technician",
+                  "Medical Assistant",
+                  "Clinic Receptionist",
+                  "Hospital Staff",
+
+                  // Education
+                  "Teacher",
+                  "Professor",
+                  "Tutor",
+                  "School Administrator",
+
+                  // Business & Office
                   "Accountant",
-                  "Engineer",
+                  "Auditor",
+                  "HR Executive",
+                  "Recruiter",
+                  "Office Administrator",
+                  "Back Office Executive",
+                  "Data Entry Operator",
+                  "Operations Executive",
+
+                  // Marketing & Sales
+                  "Marketing Executive",
+                  "Digital Marketer",
+                  "SEO Executive",
+                  "Sales Executive",
+                  "Business Development Executive",
+                  "Relationship Manager",
+
+                  // Customer Support
+                  "Customer Support Executive",
+                  "Call Center Executive",
+                  "Telecaller",
+
+                  // Engineering
+                  "Civil Engineer",
+                  "Mechanical Engineer",
+                  "Electrical Engineer",
+                  "Site Supervisor",
+
+                  // Logistics & Transport
                   "Driver",
-                  "Receptionist",
-                  "Customer Support",
+                  "Delivery Executive",
+                  "Logistics Executive",
+                  "Warehouse Executive",
+
+                  // Manufacturing & Skilled
                   "Factory Worker",
+                  "Machine Operator",
                   "Electrician",
+                  "Plumber",
+                  "Welder",
+                  "Technician",
+                  "Maintenance Staff",
+
+                  // Retail & Hospitality
+                  "Store Sales Executive",
+                  "Cashier",
+                  "Store Manager",
+                  "Hotel Staff",
+                  "Restaurant Staff",
+                  "Cook",
+                  "Waiter",
+
+                  // Security & Facilities
+                  "Security Guard",
+                  "Housekeeping Staff",
+
+                  // Creative & Media
+                  "Content Writer",
+                  "Copywriter",
+                  "Video Editor",
+                  "Photographer",
+                  "Social Media Manager",
+
+                  // Tech
+                  "Software Developer",
+                  "Web Developer",
+                  "Frontend Developer",
+                  "Backend Developer",
+                  "Full Stack Developer",
+                  "Mobile App Developer",
+                  "UI / UX Designer",
+                  "Graphic Designer",
+                  "QA / Tester",
+                  "DevOps Engineer",
+                  "System Administrator",
+                  "IT Support",
+                  "Cyber Security Analyst",
+                  "Data Analyst",
+
+                  // Legal & Govt
+                  "Legal Assistant",
+                  "Lawyer",
+                  "Clerk",
+
+                  // Freelance & Others
+                  "Freelancer",
+                  "Consultant",
+                  "Business Owner",
                   "Other",
                 ]}
+                // options={[
+                //   "IT & Software",
+                //   "Tech Support",
+                //   "Doctors",
+                //   "Nurses",
+                //   "Teachers",
+                //   "Marketing",
+                //   "Sales",
+                //   "Accountant",
+                //   "Engineer",
+                //   "Driver",
+                //   "Receptionist",
+                //   "Customer Support",
+                //   "Factory Worker",
+                //   "Electrician",
+                //   "Other",
+                // ]}
                 onChange={handleChange}
                 error={errors.availabilityJobCategory}
               />
@@ -1422,13 +1549,20 @@ const ResumePage = () => {
                 label="Expected Salary Range"
                 name="expectedSalaryRange"
                 value={form.expectedSalaryRange}
+                required
                 options={[
+                  "5 Thousand - 10 Thousand",
+                  "15 Thousand - 30 Thousand",
+                  "30 Thousand - 50 Thousand",
+                  "50 Thousand - 80 Thousand",
+                  "80 Thousand - 1 Lakh",
                   "1 Lakh - 2 Lakh",
                   "2 Lakh - 3 Lakh",
                   "3 Lakh - 4 Lakh",
                   "4 Lakh - 5 Lakh",
                   "5 Lakh - 7 Lakh",
                   "7 Lakh - 10 Lakh",
+                  "10 Lakh - 20 Lakh",
                 ]}
                 onChange={handleChange}
                 error={errors.expectedSalaryRange}

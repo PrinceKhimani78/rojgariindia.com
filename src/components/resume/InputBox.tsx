@@ -24,14 +24,19 @@ const InputBox = ({
       />
 
       <label
-        className={`
-          absolute left-4 px-1 bg-white text-gray-500 pointer-events-none
-          transition-all duration-150
-          top-1/2 -translate-y-1/2
-          peer-focus:top-1 peer-focus:-translate-y-1/2 peer-focus:text-sm peer-focus:text-[#72B76A]
-          peer-placeholder-shown:top-1/2 peer-placeholder-shown:-translate-y-1/2 peer-placeholder-shown:text-base
-          peer-not-placeholder-shown:top-1 peer-not-placeholder-shown:-translate-y-1/2 peer-not-placeholder-shown:text-sm peer-not-placeholder-shown:text-[#72B76A]
-        `}
+        className="
+    absolute left-4 -top-2 px-1
+    bg-white text-sm text-gray-500 peer-focus:text-[#72B76A]
+    pointer-events-none
+  "
+        // className={`
+        //   absolute left-4 px-1 bg-white text-gray-500 pointer-events-none
+        //   transition-all duration-150
+        //   top-1/2 -translate-y-1/2
+        //   peer-focus:top-1 peer-focus:-translate-y-1/2 peer-focus:text-sm peer-focus:text-[#72B76A]
+        //   peer-placeholder-shown:top-1/2 peer-placeholder-shown:-translate-y-1/2 peer-placeholder-shown:text-base
+        //   peer-not-placeholder-shown:top-1 peer-not-placeholder-shown:-translate-y-1/2 peer-not-placeholder-shown:text-sm peer-not-placeholder-shown:text-[#72B76A]
+        // `}
       >
         {label}
         {required && <span className="text-red-500 ml-1">*</span>}

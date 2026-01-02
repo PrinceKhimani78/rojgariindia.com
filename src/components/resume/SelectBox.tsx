@@ -47,19 +47,26 @@ const SelectBox = ({
       </span>
 
       <label
-        className={`
-          absolute left-4 px-1 bg-white pointer-events-none
-          transition-all duration-150
-          ${
-            value
-              ? "top-1 -translate-y-1/2 text-sm text-[#72B76A]"
-              : "top-1/2 -translate-y-1/2 text-base text-gray-400"
-          }
-          peer-focus:top-1
-          peer-focus:-translate-y-1/2
-          peer-focus:text-sm
-          peer-focus:text-[#72B76A]
-        `}
+        className="
+    absolute left-4 -top-2 px-1
+    bg-white text-sm text-gray-500
+    peer-focus:text-[#72B76A]
+    pointer-events-none
+  "
+
+        // className={`
+        //   absolute left-4 px-1 bg-white pointer-events-none
+        //   transition-all duration-150
+        //   ${
+        //     value
+        //       ? "top-1 -translate-y-1/2 text-sm text-[#72B76A]"
+        //       : "top-1/2 -translate-y-1/2 text-base text-gray-400"
+        //   }
+        //   peer-focus:top-1
+        //   peer-focus:-translate-y-1/2
+        //   peer-focus:text-sm
+        //   peer-focus:text-[#72B76A]
+        // `}
       >
         {label}
         {required && <span className="text-red-500 ml-1">*</span>}
