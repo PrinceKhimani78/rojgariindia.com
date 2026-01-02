@@ -13,10 +13,8 @@ const EmailStep = ({ email, setEmail, loading, onNext }) => {
       <input
         type="email"
         placeholder="Enter your email"
-        className="
-          w-full border px-4 py-2 text-sm rounded-lg mb-6
-          focus:border-[#72B76A] focus:ring-1 focus:ring-[#72B76A] outline-none
-        "
+        className="text-black w-full border border-gray-500 px-4 py-3 text-base rounded-lg mb-6
+          focus:border-[#72B76A] focus:ring-1 focus:ring-[#72B76A] outline-none"
         value={email}
         onChange={(e) => setEmail(e.target.value)}
       />

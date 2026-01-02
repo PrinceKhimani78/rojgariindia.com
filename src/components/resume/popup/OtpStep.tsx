@@ -11,10 +11,8 @@ const OtpStep = ({ otp, setOtp, onVerify, isVerified }) => {
       <input
         type="text"
         placeholder="Enter OTP"
-        className="
-          w-full border px-4 py-2 text-sm rounded-lg mb-6
-          focus:border-[#72B76A] focus:ring-1 focus:ring-[#72B76A] outline-none
-        "
+        className="text-black w-full border border-gray-500 px-4 py-3 text-base rounded-lg mb-6
+          focus:border-[#72B76A] focus:ring-1 focus:ring-[#72B76A] outline-none"
         value={otp}
         onChange={(e) => setOtp(e.target.value)}
       />

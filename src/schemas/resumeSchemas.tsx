@@ -46,7 +46,7 @@ export const skillSchema = z.object({
 
 const baseSchema = {
   firstName: z.string().min(1, "First name required"),
-  surName: z.string().min(1, "Surname required"),
+  surName: z.string().min(1, "Last name required"),
   email: z.string().email("Invalid email"),
   phone: z
     .string()
