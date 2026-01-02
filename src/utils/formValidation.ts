@@ -64,10 +64,7 @@ export function validateField(
       // Conditional: don't validate hidden groups
       if (workType === "fresher" && (experienceSchema as any).shape[field])
         return null;
-      if (
-        workType === "experienced" &&
-        (educationSchema as any).shape[field]
-      )
+      if (workType === "experienced" && (educationSchema as any).shape[field])
         return null;
 
       z.object({ [field]: fieldSchema }).parse({ [field]: value });
@@ -78,11 +75,14 @@ export function validateField(
     // NORMAL FIELDS
     const normalFieldSchemas: Record<string, z.ZodTypeAny> = {
       firstName: z.string().min(1, "First name required"),
-      surName: z.string().min(1, "Surname required"),
+      surName: z.string().min(1, "Last name required"),
       email: z.string().email("Invalid email"),
       phone: z
         .string()
-        .refine((val) => /^(\+91)[6-9]\d{9}$/.test(val), "Enter a valid Indian mobile number"),
+        .refine(
+          (val) => /^(\+91)[6-9]\d{9}$/.test(val),
+          "Enter a valid Indian mobile number"
+        ),
       state: z.string().min(1, "State required"),
       district: z.string().min(1, "District required"),
       city: z.string().min(1, "City required"),
@@ -114,7 +114,10 @@ export function validateField(
     }
 
     try {
-      const maybe = err as { message?: string; errors?: Array<{ message?: string }> };
+      const maybe = err as {
+        message?: string;
+        errors?: Array<{ message?: string }>;
+      };
       return maybe.errors?.[0]?.message || maybe.message || "Invalid value";
     } catch {
       return "Invalid value";
@@ -140,7 +143,8 @@ export function validateExperienceDates(
 export function validateForm(payload: unknown) {
   const parsed = resumeSchema.safeParse(payload);
 
-  if (parsed.success) return { isValid: true, errors: {} as Record<string, string> };
+  if (parsed.success)
+    return { isValid: true, errors: {} as Record<string, string> };
 
   const mapped: Record<string, string> = {};
 
