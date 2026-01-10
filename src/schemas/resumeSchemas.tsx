@@ -4,6 +4,10 @@ export const experienceSchema = z
   .object({
     position: z.string().min(1, "Position is required"),
     company: z.string().min(1, "Company name is required"),
+    currentWages: z.string().min(1, "Current wages required"),
+    currentCity: z.string().min(1, "Current city required"),
+    currentVillage: z.string().min(1, "Current village required"),
+    currentVillageOther: z.string().optional(),
     noticePeriod: z.string().min(1, "Notice period is required"),
     startDate: z.string().min(1, "Start date required"),
     endDate: z.string().optional(),
@@ -48,6 +52,21 @@ const baseSchema = {
   firstName: z.string().min(1, "First name required"),
   surName: z.string().min(1, "Last name required"),
   email: z.string().email("Invalid email"),
+  totalExperience: z.string().optional(), // Moved from skills, logically optional or required?
+  dob: z.string().min(1, "Date of birth required"),
+  gender: z.enum(["Male", "Female", "Other"], {
+    message: "Select gender",
+  }),
+  maritalStatus: z.enum(["Single", "Married", "Divorced", "Widowed"], {
+    message: "Select marital status",
+  }),
+  alternateMobile: z
+    .string()
+    .optional()
+    .refine(
+      (val) => !val || /^(\+91)?[6-9]\d{9}$/.test(val),
+      "Enter a valid Indian mobile number"
+    ),
   phone: z
     .string()
     .refine(
@@ -55,6 +74,22 @@ const baseSchema = {
       "Enter a valid Indian mobile number"
     ),
   skillsList: z.array(skillSchema).min(1, "Add at least one skill"),
+
+  // Location Fields (Adding them to ensure validation works on submit)
+  state: z.string().min(1, "State required"),
+  district: z.string().min(1, "District required"),
+  city: z.string().min(1, "City required"),
+  village: z.string().min(1, "Village required"),
+  address: z.string().min(1, "Address required"),
+
+  // Availability
+  expectedSalaryMin: z.string().min(1, "Min salary required"),
+  expectedSalaryMax: z.string().min(1, "Max salary required"),
+  availabilityCategory: z.string().optional(),
+  availabilityJobCategory: z.string().optional(),
+
+  // Summaries
+  summary: z.string().optional(),
 };
 
 // Schema for experienced candidates

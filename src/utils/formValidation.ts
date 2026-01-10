@@ -11,10 +11,15 @@ export const initialForm = {
   surName: "",
   email: "",
   phone: "",
+  alternateMobile: "",
+  dob: "",
+  gender: "",
+  maritalStatus: "",
   state: "",
   district: "",
   city: "",
   village: "",
+  otherVillage: "",
   address: "",
   summary: "",
   availabilityCategory: "",
@@ -22,10 +27,13 @@ export const initialForm = {
   availabilityDistrict: "",
   availabilityCity: "",
   availabilityVillage: "",
+  availabilityOtherVillage: "",
 
   joiningDate: "",
   availabilityJobCategory: "",
-  expectedSalaryRange: "",
+  expectedSalaryMin: "",
+  expectedSalaryMax: "",
+  totalExperience: "",
   additionalInfo: "",
 };
 
@@ -83,6 +91,16 @@ export function validateField(
           (val) => /^(\+91)[6-9]\d{9}$/.test(val),
           "Enter a valid Indian mobile number"
         ),
+      alternateMobile: z
+        .string()
+        .optional()
+        .refine(
+          (val) => !val || /^(\+91)?[6-9]\d{9}$/.test(val),
+          "Enter a valid Indian mobile number"
+        ),
+      dob: z.string().min(1, "Date of birth required"),
+      gender: z.string().min(1, "Gender required"),
+      maritalStatus: z.string().min(1, "Marital status required"),
       state: z.string().min(1, "State required"),
       district: z.string().min(1, "District required"),
       city: z.string().min(1, "City required"),
@@ -96,7 +114,9 @@ export function validateField(
       availabilityVillage: z.string().optional(),
       joiningDate: z.string().optional(),
       availabilityJobCategory: z.string().optional(),
-      expectedSalaryRange: z.string().optional(),
+      expectedSalaryMin: z.string().min(1, "Min salary required"),
+      expectedSalaryMax: z.string().min(1, "Max salary required"),
+      totalExperience: z.string().optional(),
       additionalInfo: z.string().optional(),
     };
 
