@@ -155,7 +155,7 @@ const ResumePage = () => {
       | React.ChangeEvent<HTMLTextAreaElement>
       | React.ChangeEvent<HTMLSelectElement>
   ) => {
-    const { name, value } = e.target;
+    let { name, value } = e.target;
     // Mark field as touched (so we show validation only after interaction)
     setTouched((t) => ({ ...t, [name]: true }));
 
@@ -170,6 +170,15 @@ const ResumePage = () => {
     if (name.includes("-")) {
       const [fieldName, idxStr] = name.split("-");
       const index = Number(idxStr);
+
+      // NOTICE PERIOD INT ONLY
+      if (fieldName === "noticePeriod") {
+        value = value.replace(/\D/g, "");
+      }
+      // CURRENT WAGES INT ONLY
+      if (fieldName === "currentWages") {
+        value = value.replace(/\D/g, "");
+      }
 
       // EXPERIENCE FIELDS
       if (experienceSchema.shape[fieldName]) {
@@ -279,15 +288,31 @@ const ResumePage = () => {
       return;
     }
 
-    if (name === "phone") {
-      const formatted = normalizeIndianPhone(value);
+    // MOBILE NUMBER & ALTERNATE MOBILE VALIDATION
+    if (name === "phone" || name === "alternateMobile") {
+      let digits = value.replace(/\D/g, "");
+
+      // If length > 10 and starts with 91, assume it's the prefix we added or user added
+      if (digits.length > 10 && digits.startsWith("91")) {
+        digits = digits.slice(2);
+      }
+
+      // Truncate to 10 digits
+      if (digits.length > 10) {
+        digits = digits.slice(0, 10);
+      }
+
+      let formatted = digits;
+      if (digits.length === 10) {
+        formatted = "+91 " + digits;
+      }
 
       setForm((prev) => ({
         ...prev,
-        phone: formatted,
+        [name]: formatted,
       }));
 
-      scheduleValidate("phone", formatted);
+      scheduleValidate(name, formatted);
       return;
     }
 
@@ -372,6 +397,13 @@ const ResumePage = () => {
     e.preventDefault();
     // mark that user has attempted to submit - show all validation errors
     setFormSubmitted(true);
+
+    // CHECK PHOTO UPLOAD
+    if (!photoFile) {
+      showSnackbar("Please upload a profile photo.", "error");
+      window.scrollTo({ top: 0, behavior: "smooth" });
+      return;
+    }
 
     // Validate first
     const payload = {
@@ -1040,7 +1072,7 @@ const ResumePage = () => {
                       name={`noticePeriod-${index}`}
                       value={exp.noticePeriod}
                       onChange={(e) => {
-                        const val = e.target.value;
+                        const val = e.target.value.replace(/\D/g, "");
                         setExperiences((p) =>
                           p.map((v, i) =>
                             i === index ? { ...v, noticePeriod: val } : v
@@ -1074,11 +1106,11 @@ const ResumePage = () => {
 
                     {/* NEW FIELDS */}
                     <InputBox
-                      label="Current Wages (₹)"
+                      label="Current Salary (₹)"
                       name={`currentWages-${index}`}
                       value={exp.currentWages || ""}
                       onChange={(e) => {
-                        const val = e.target.value;
+                        const val = e.target.value.replace(/\D/g, "");
                         setExperiences(p => p.map((v, i) => i === index ? { ...v, currentWages: val } : v));
                         // validation logic...
                         const err = validateFieldUtil(`currentWages-${index}`, val, workType);
