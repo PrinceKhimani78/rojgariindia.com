@@ -400,6 +400,7 @@ const ResumePage = () => {
 
     // CHECK PHOTO UPLOAD
     if (!photoFile) {
+      setErrors((prev) => ({ ...prev, photo: "Profile photo is required" }));
       showSnackbar("Please upload a profile photo.", "error");
       window.scrollTo({ top: 0, behavior: "smooth" });
       return;
@@ -734,7 +735,7 @@ const ResumePage = () => {
                 required
               />
 
-              <label className="w-full h-[45px] sm:h-auto bg-white/10 border border-gray-300 rounded-xl flex items-center justify-center cursor-pointer text-gray-400 overflow-hidden row-span-1 md:row-span-3">
+              <label className={`w-full h-[45px] sm:h-auto bg-white/10 border ${errors.photo ? "border-red-500" : "border-gray-300"} rounded-xl flex items-center justify-center cursor-pointer text-gray-400 overflow-hidden row-span-1 md:row-span-3 relative`}>
                 {photoPreview ? (
                   <Image
                     src={photoPreview}
@@ -744,16 +745,24 @@ const ResumePage = () => {
                     className="w-auto h-auto object-cover"
                   />
                 ) : (
-                  <span className="text-m opacity-80 sm:text-left">
-                    Upload Photo
+                  <span className={`text-m opacity-80 sm:text-left ${errors.photo ? "text-red-500" : ""}`}>
+                    {errors.photo ? "Photo Required" : "Upload Photo"}
                   </span>
                 )}
                 <input
                   type="file"
                   accept="image/*"
-                  onChange={handlePhoto}
+                  onChange={(e) => {
+                    handlePhoto(e);
+                    if (e.target.files?.[0]) {
+                      setErrors(prev => {
+                        const newErr = { ...prev };
+                        delete newErr.photo;
+                        return newErr;
+                      });
+                    }
+                  }}
                   className="hidden"
-                  required
                 />
               </label>
 
