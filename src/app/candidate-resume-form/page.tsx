@@ -448,7 +448,19 @@ const ResumePage = () => {
       total_experience_years: form.totalExperience ? Number(form.totalExperience) : null,
       job_category: form.availabilityJobCategory,
       current_location: `${form.availabilityCity}, ${form.availabilityState}`,
-      interview_availability: form.availabilityCategory,
+      availability_start: form.joiningDate,
+      preferred_shift: form.availabilityCategory, // Assuming availabilityCategory maps to shift or availability? Wait, form.availabilityCategory is "Full Time", etc?
+      // Actually checking form: availabilityCategory is likely interview availability?
+      // In form: interview_availability: form.availabilityCategory
+      // Let's check initialForm again.
+      // Re-reading page.tsx mapping:
+      // interview_availability: form.availabilityCategory,
+      // OK. User said "joining date not coming".
+      // joiningDate likely maps to availability_start.
+
+      summary: form.summary,
+      additional_info: form.additionalInfo,
+
       work_experience: experiences.map((exp) => ({
         position: exp.position,
         company: exp.company,
@@ -460,9 +472,15 @@ const ResumePage = () => {
         current_city: exp.currentCity,
         current_village: exp.currentVillage === "Other" ? exp.currentVillageOther : exp.currentVillage,
       })),
+      education: educationList.map((edu) => ({
+        degree: edu.degree,
+        university: edu.university,
+        passing_year: edu.passingYear,
+      })),
       skills: skillsList.map((skill) => ({
         skill_name: skill.name,
         years_of_experience: skill.years || "0",
+        level: skill.level,
       })),
     };
 
