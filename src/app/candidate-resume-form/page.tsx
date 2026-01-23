@@ -952,7 +952,7 @@ const ResumePage = () => {
                 });
               }}
               className={`
-      w-full h-12 rounded-lg transition
+      w-full h-12 rounded-lg transition cursor-pointer
       ${workType === "experienced"
                   ? "bg-[#72B76A] text-white border border-[#72B76A]"
                   : "bg-transparent text-[#72B76A] border border-[#72B76A]"
@@ -996,7 +996,7 @@ const ResumePage = () => {
                 });
               }}
               className={`
-      w-full h-12 rounded-lg transition
+      w-full h-12 rounded-lg transition cursor-pointer
       ${workType === "fresher"
                   ? "bg-[#72B76A] text-white border border-[#72B76A]"
                   : "bg-transparent text-[#72B76A] border border-[#72B76A]"
@@ -1806,7 +1806,7 @@ const ResumePage = () => {
             type="submit"
             disabled={loading}
             className={`submit-btn 
-              w-full h-12 ${loading
+              w-full h-12 cursor-pointer ${loading
                 ? "bg-[#5e9b55] opacity-90 cursor-not-allowed"
                 : "bg-[#72B76A]"
               } text-white rounded-xl 
