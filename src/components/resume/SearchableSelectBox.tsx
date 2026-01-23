@@ -142,14 +142,20 @@ const SearchableSelectBox: React.FC<SearchableSelectBoxProps> = ({
                 />
 
                 <label
-                    className={`absolute left-4 px-1 bg-white text-gray-500 pointer-events-none
-            transition-all duration-150
-            top-1/2 -translate-y-1/2
-            peer-focus:top-1 peer-focus:-translate-y-1/2 peer-focus:text-sm peer-focus:text-[#72B76A]
-            peer-placeholder-shown:top-1/2 peer-placeholder-shown:-translate-y-1/2 peer-placeholder-shown:text-base
-            peer-not-placeholder-shown:top-1 peer-not-placeholder-shown:-translate-y-1/2 peer-not-placeholder-shown:text-sm peer-not-placeholder-shown:text-[#72B76A]
-            ${value || searchTerm ? "top-1 -translate-y-1/2 text-sm text-[#72B76A]" : ""}
-            `}
+                    //         className={`absolute left-4 px-1 bg-white text-gray-500 pointer-events-none
+                    // transition-all duration-150
+                    // top-1/2 -translate-y-1/2
+                    // peer-focus:top-1 peer-focus:-translate-y-1/2 peer-focus:text-sm peer-focus:text-[#72B76A]
+                    // peer-placeholder-shown:top-1/2 peer-placeholder-shown:-translate-y-1/2 peer-placeholder-shown:text-base
+                    // peer-not-placeholder-shown:top-1 peer-not-placeholder-shown:-translate-y-1/2 peer-not-placeholder-shown:text-sm peer-not-placeholder-shown:text-[#72B76A]
+                    // ${value || searchTerm ? "top-1 -translate-y-1/2 text-sm text-[#72B76A]" : ""}
+                    // `}
+                    className={`absolute left-4 -top-2 px-1 bg-white
+  text-sm pointer-events-none
+  text-gray-500
+  ${value || searchTerm ? "text-[#72B76A]" : ""}
+`}
+
                 >
                     {label}
                 </label>
@@ -162,7 +168,7 @@ const SearchableSelectBox: React.FC<SearchableSelectBoxProps> = ({
             {error && <p className="text-red-500 text-xs mt-1 ml-1">{error}</p>}
 
             {isOpen && !disabled && (
-                <ul className="absolute z-50 w-full mt-1 max-h-60 overflow-auto bg-white border border-gray-200 rounded-lg shadow-lg">
+                <ul className="absolute z-50 w-full mt-1 max-h-40 overflow-auto bg-white border border-gray-200 rounded-lg shadow-lg">
                     {filteredOptions.length > 0 ? (
                         filteredOptions.map((option, idx) => (
                             <li
