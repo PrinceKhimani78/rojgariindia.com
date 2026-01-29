@@ -461,6 +461,7 @@ const ResumePage = () => {
 
       summary: form.summary,
       additional_info: form.additionalInfo,
+      pincode: form.pincode,
 
       work_experience: experiences.map((exp) => ({
         position: exp.position,
@@ -872,6 +873,17 @@ const ResumePage = () => {
                 value={form.address}
                 onChange={handleChange}
                 error={errors.address}
+                required
+              />
+              <InputBox
+                label="PIN CODE"
+                name="pincode"
+                value={form.pincode}
+                onChange={(e) => {
+                  e.target.value = e.target.value.replace(/\D/g, "").slice(0, 6);
+                  handleChange(e);
+                }}
+                error={errors.pincode}
                 required
               />
 

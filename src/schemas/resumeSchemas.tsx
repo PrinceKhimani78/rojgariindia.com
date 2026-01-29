@@ -90,6 +90,10 @@ const baseSchema = {
 
   // Summaries
   summary: z.string().optional(),
+  pincode: z
+    .string()
+    .length(6, "PIN CODE must be 6 digits")
+    .regex(/^\d+$/, "PIN CODE must contain only numbers"),
 };
 
 // Schema for experienced candidates

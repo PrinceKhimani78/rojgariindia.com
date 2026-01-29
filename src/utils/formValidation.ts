@@ -34,6 +34,7 @@ export const initialForm = {
   expectedSalaryMin: "",
   expectedSalaryMax: "",
   totalExperience: "",
+  pincode: "",
   additionalInfo: "",
 };
 
@@ -117,6 +118,7 @@ export function validateField(
       expectedSalaryMin: z.string().min(1, "Min salary required"),
       expectedSalaryMax: z.string().min(1, "Max salary required"),
       totalExperience: z.string().optional(),
+      pincode: z.string().length(6, "PIN CODE must be 6 digits").regex(/^\d+$/, "PIN CODE must contain only numbers"),
       additionalInfo: z.string().optional(),
     };
 
