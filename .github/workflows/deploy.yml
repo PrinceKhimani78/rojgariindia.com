@@ -39,6 +39,8 @@ jobs:
           cp -r .next/standalone/* release/
 
           # Copy FULL .next folder (BUILD_ID + hashed assets)
+          # Note: We need to make sure we don't copy standalone's limited .next over the full one or vice versa
+          # Standalone contains server/ etc. The full .next contains static assets.
           cp -r .next release/
 
           # Runtime files
@@ -50,10 +52,6 @@ jobs:
             cp -r public release/
           fi
 
-          # Package
-          tar -czf release.tar.gz -C release .
-          rm -rf release
-
       # 6. Upload build to server
       - name: Upload release to server
         uses: appleboy/scp-action@v0.1.7
@@ -61,8 +59,9 @@ jobs:
           host: ${{ secrets.DEPLOY_HOST }}
           username: ${{ secrets.DEPLOY_USERNAME }}
           key: ${{ secrets.SSH_PRIVATE_KEY }}
-          source: "release.tar.gz"
+          source: "release/*"
           target: "/home/rojgariindia.com/app/"
+          strip_components: 1
 
       # 7. Deploy on server
       - name: Deploy on server
@@ -76,17 +75,9 @@ jobs:
             set -e
             cd /home/rojgariindia.com/app
 
-            # Stop old app
+            # Restart app (standalone)
+            # If it's the first time, it might fail to stop/delete, but start should work.
             pm2 stop rojgari-main || true
             pm2 delete rojgari-main || true
-
-            # Clean old build
-            rm -rf .next node_modules server.js
-
-            # Extract new release
-            tar -xzf release.tar.gz
-            rm release.tar.gz
-
-            # Start app (standalone)
             pm2 start start.sh --name rojgari-main
             pm2 save --force
