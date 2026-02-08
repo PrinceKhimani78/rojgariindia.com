@@ -152,7 +152,7 @@ const SearchableSelectBox: React.FC<SearchableSelectBoxProps> = ({
                     // `}
                     className={`absolute left-4 -top-2 px-1 bg-white
   text-sm pointer-events-none
-  text-gray-500
+  text-gray-600
   ${value || searchTerm ? "text-[#72B76A]" : ""}
 `}
 

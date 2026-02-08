@@ -876,7 +876,7 @@ const ResumePage = () => {
                 required
               />
               <InputBox
-                label="PIN CODE"
+                label="Pin Code"
                 name="pincode"
                 value={form.pincode}
                 onChange={(e) => {
@@ -1570,7 +1570,7 @@ const ResumePage = () => {
                     }
                     className={`w-7 h-7 text-xl ${skillsList.length === 1
                       ? "text-[#A6D8A3] border border-[#A6D8A3] font-bold rounded-md cursor-not-allowed"
-                      : "bg-[#72B76A] text-white"
+                      : "bg-[#72B76A] text-white rounded-md"
                       }`}
                   >
                     –
