@@ -14,9 +14,12 @@ const DatePicker = ({
 
   return (
     <div className="relative w-full">
-      <label className="absolute left-4 top-1 -translate-y-1/2 px-1 bg-white text-sm text-gray-700 pointer-events-none z-10">
+      <label 
+      
+      className="absolute left-4 top-1 -translate-y-1/2 px-1 bg-white text-sm text-gray-600 peer-focus:text-[#72B76A] pointer-events-none z-10"
+      >
         {label}
-        {required && <span className="text-red-500 ml-1">*</span>}
+        {required && <span className="text-red-500 ml-1 peer-focus:text-[#72B76A]">*</span>}
       </label>
 
       <input
@@ -25,7 +28,7 @@ const DatePicker = ({
         name={name}
         value={value || ""}
         onChange={onChange}
-        className={`
+        className={` peer
           w-full px-4 pt-6 pb-2 rounded-xl 
           bg-white text-gray-900
           border outline-none transition-all

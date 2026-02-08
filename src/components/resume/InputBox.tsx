@@ -26,7 +26,7 @@ const InputBox = ({
       <label
         className="
     absolute left-4 -top-2 px-1
-    bg-white text-sm text-gray-500 peer-focus:text-[#72B76A]
+    bg-white text-sm text-gray-600 
     pointer-events-none
   "
         // className={`
