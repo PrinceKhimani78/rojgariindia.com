@@ -1603,6 +1603,7 @@ const ResumePage = () => {
                 options={["Full-Time", "Part-Time", "Contract", "Internship"]}
                 onChange={handleChange}
                 error={errors.availabilityCategory}
+                required
               />
 
               <SearchableSelectBox
@@ -1612,6 +1613,7 @@ const ResumePage = () => {
                 options={availabilityStateOptions}
                 onChange={handleChange}
                 error={errors.availabilityState}
+                required
               />
 
               <SearchableSelectBox
@@ -1621,6 +1623,7 @@ const ResumePage = () => {
                 options={availabilityDistrictOptions}
                 onChange={handleChange}
                 error={errors.availabilityDistrict}
+                required
               />
 
               <SearchableSelectBox
@@ -1630,6 +1633,7 @@ const ResumePage = () => {
                 options={availabilityCityOptions}
                 onChange={handleChange}
                 error={errors.availabilityCity}
+                required
               />
 
               <SearchableSelectBox
@@ -1639,6 +1643,7 @@ const ResumePage = () => {
                 options={[...availabilityVillageOptions, "Other"]}
                 onChange={handleChange}
                 error={errors.availabilityVillage}
+                required
               />
 
               {form.availabilityVillage === "Other" && (
@@ -1801,6 +1806,7 @@ const ResumePage = () => {
                 // ]}
                 onChange={handleChange}
                 error={errors.availabilityJobCategory}
+                required
               />
 
               <InputBox

@@ -85,8 +85,12 @@ const baseSchema = {
   // Availability
   expectedSalaryMin: z.string().min(1, "Min salary required"),
   expectedSalaryMax: z.string().min(1, "Max salary required"),
-  availabilityCategory: z.string().optional(),
-  availabilityJobCategory: z.string().optional(),
+  availabilityCategory: z.string().min(1, "Category required"),
+  availabilityJobCategory: z.string().min(1, "Job category required"),
+  availabilityState: z.string().min(1, "Availability state required"),
+  availabilityDistrict: z.string().min(1, "Availability district required"),
+  availabilityCity: z.string().min(1, "Availability city required"),
+  availabilityVillage: z.string().min(1, "Availability village required"),
 
   // Summaries
   summary: z.string().optional(),
