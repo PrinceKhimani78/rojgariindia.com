@@ -7,4 +7,5 @@ export NEXT_PUBLIC_BACKEND_API_URL=http://api.rojgariindia.com/api
 
 cd /home/rojgariindia.com/app
 
-exec node server.js
+NODE_EXE=$(which node || echo "node")
+exec $NODE_EXE server.js

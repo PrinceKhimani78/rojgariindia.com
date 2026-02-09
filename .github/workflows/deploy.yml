@@ -73,17 +73,24 @@ jobs:
           command_timeout: 10m
           script: |
             set -e
-            # Ensure Node.js environment is loaded
+            # Robust Node.js environment loading
             export NVM_DIR="$HOME/.nvm"
-            [ -s "$NVM_DIR/nvm.sh" ] && \. "$NVM_DIR/nvm.sh"
-            [ -s "$HOME/.profile" ] && source "$HOME/.profile"
+            [ -s "$NVM_DIR/nvm.sh" ] && source "$NVM_DIR/nvm.sh"
             [ -s "$HOME/.bashrc" ] && source "$HOME/.bashrc"
+            [ -s "$HOME/.profile" ] && source "$HOME/.profile"
+
+            # Debugging info
+            echo "Current PATH: $PATH"
+            echo "Node location: $(which node || echo 'Not found')"
+            echo "PM2 location: $(which pm2 || echo 'Not found')"
 
             cd /home/rojgariindia.com/app
 
-            # Restart app (standalone)
-            # If it's the first time, it might fail to stop/delete, but start should work.
-            pm2 stop rojgari-main || true
-            pm2 delete rojgari-main || true
-            pm2 start start.sh --name rojgari-main
-            pm2 save --force
+            # Use absolute path for PM2 if possible
+            PM2_BIN=$(which pm2 || echo "pm2")
+            $PM2_BIN stop rojgari-main || true
+            $PM2_BIN delete rojgari-main || true
+
+            # Start using bash explicitly to avoid env issues in shebang
+            $PM2_BIN start bash --name rojgari-main -- ./start.sh
+            $PM2_BIN save --force
