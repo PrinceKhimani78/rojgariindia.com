@@ -398,13 +398,13 @@ const ResumePage = () => {
     // mark that user has attempted to submit - show all validation errors
     setFormSubmitted(true);
 
-    // CHECK PHOTO UPLOAD
-    if (!photoFile) {
-      setErrors((prev) => ({ ...prev, photo: "Profile photo is required" }));
-      showSnackbar("Please upload a profile photo.", "error");
-      window.scrollTo({ top: 0, behavior: "smooth" });
-      return;
-    }
+    // CHECK PHOTO UPLOAD (Optional now)
+    // if (!photoFile) {
+    //   setErrors((prev) => ({ ...prev, photo: "Profile photo is required" }));
+    //   showSnackbar("Please upload a profile photo.", "error");
+    //   window.scrollTo({ top: 0, behavior: "smooth" });
+    //   return;
+    // }
 
     // Validate first
     const payload = {
@@ -809,6 +809,7 @@ const ResumePage = () => {
                 options={["Male", "Female", "Other"]}
                 onChange={handleChange}
                 error={errors.gender}
+                required
               />
 
               <SearchableSelectBox
@@ -818,6 +819,7 @@ const ResumePage = () => {
                 options={["Single", "Married", "Divorced", "Widowed"]}
                 onChange={handleChange}
                 error={errors.maritalStatus}
+                required
               />
 
               <SearchableSelectBox
@@ -827,6 +829,7 @@ const ResumePage = () => {
                 options={stateOptions}
                 onChange={handleChange}
                 error={errors.state}
+                required
               />
               <SearchableSelectBox
                 label="District"
@@ -835,6 +838,7 @@ const ResumePage = () => {
                 options={districtOptions}
                 onChange={handleChange}
                 error={errors.district}
+                required
               />
               <SearchableSelectBox
                 label="City"
@@ -843,6 +847,7 @@ const ResumePage = () => {
                 options={cityOptions}
                 onChange={handleChange}
                 error={errors.city}
+                required
               />
 
               <SearchableSelectBox
@@ -852,6 +857,7 @@ const ResumePage = () => {
                 options={[...villageOptions, "Other"]}
                 onChange={handleChange}
                 error={errors.village}
+                required
               />
 
               {form.village === "Other" && (
@@ -1106,42 +1112,43 @@ const ResumePage = () => {
                       error={errors[`company-${index}`]}
                       required
                     />
-                    <InputBox
-                      label="Notice Period"
-                      name={`noticePeriod-${index}`}
-                      value={exp.noticePeriod}
-                      onChange={(e) => {
-                        const val = e.target.value.replace(/\D/g, "");
-                        setExperiences((p) =>
-                          p.map((v, i) =>
-                            i === index ? { ...v, noticePeriod: val } : v
-                          )
-                        );
+                    {index === 0 && (
+                      <InputBox
+                        label="Notice Period (Days)"
+                        name={`noticePeriod-${index}`}
+                        value={exp.noticePeriod}
+                        onChange={(e) => {
+                          const val = e.target.value.replace(/\D/g, "");
+                          setExperiences((p) =>
+                            p.map((v, i) =>
+                              i === index ? { ...v, noticePeriod: val } : v
+                            )
+                          );
 
-                        const err = validateFieldUtil(
-                          `noticePeriod-${index}`,
-                          val,
-                          workType
-                        );
-                        if (!err) {
-                          setErrors((prev) => {
-                            const c = { ...prev };
-                            delete c[`noticePeriod-${index}`];
-                            return c;
-                          });
-                        } else if (
-                          touched[`noticePeriod-${index}`] ||
-                          formSubmitted
-                        ) {
-                          setErrors((prev) => ({
-                            ...prev,
-                            [`noticePeriod-${index}`]: err,
-                          }));
-                        }
-                      }}
-                      error={errors[`noticePeriod-${index}`]}
-                      required
-                    />
+                          const err = validateFieldUtil(
+                            `noticePeriod-${index}`,
+                            val,
+                            workType
+                          );
+                          if (!err) {
+                            setErrors((prev) => {
+                              const c = { ...prev };
+                              delete c[`noticePeriod-${index}`];
+                              return c;
+                            });
+                          } else if (
+                            touched[`noticePeriod-${index}`] ||
+                            formSubmitted
+                          ) {
+                            setErrors((prev) => ({
+                              ...prev,
+                              [`noticePeriod-${index}`]: err,
+                            }));
+                          }
+                        }}
+                        error={errors[`noticePeriod-${index}`]}
+                      />
+                    )}
 
                     {/* NEW FIELDS */}
                     <InputBox
@@ -1202,6 +1209,7 @@ const ResumePage = () => {
                         }
                       }}
                       error={errors[`currentCity-${index}`]}
+                      required
                     />
 
                     <SearchableSelectBox
@@ -1221,6 +1229,7 @@ const ResumePage = () => {
                         }
                       }}
                       error={errors[`currentVillage-${index}`]}
+                      required
                     />
                   </div>
 

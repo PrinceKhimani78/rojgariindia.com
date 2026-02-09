@@ -12,6 +12,7 @@ interface SearchableSelectBoxProps {
     error?: string;
     placeholder?: string;
     disabled?: boolean;
+    required?: boolean;
 }
 
 const SearchableSelectBox: React.FC<SearchableSelectBoxProps> = ({
@@ -23,6 +24,7 @@ const SearchableSelectBox: React.FC<SearchableSelectBoxProps> = ({
     error,
     placeholder = "Select...",
     disabled = false,
+    required = false,
 }) => {
     const [isOpen, setIsOpen] = useState(false);
     const [searchTerm, setSearchTerm] = useState("");
@@ -158,6 +160,7 @@ const SearchableSelectBox: React.FC<SearchableSelectBoxProps> = ({
 
                 >
                     {label}
+                    {required && <span className="text-red-500 ml-1 font-bold">*</span>}
                 </label>
 
                 <div className="absolute right-4 top-1/2 -translate-y-1/2 pointer-events-none text-gray-400">
