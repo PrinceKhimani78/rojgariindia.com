@@ -8,7 +8,7 @@ export const experienceSchema = z
     currentCity: z.string().min(1, "Current city required"),
     currentVillage: z.string().min(1, "Current village required"),
     currentVillageOther: z.string().optional(),
-    noticePeriod: z.string().min(1, "Notice period is required"),
+    noticePeriod: z.string().optional(),
     startDate: z.string().min(1, "Start date required"),
     endDate: z.string().optional(),
     stillWorkingDate: z.string().optional(),
