@@ -518,6 +518,12 @@ const ResumePage = () => {
         years_of_experience: skill.years || "0",
         level: skill.level,
       })),
+      languages_known: form.languagesKnown,
+      certifications: certificationList.map((cert) => ({
+        name: cert.name,
+        year: cert.year,
+        achievement: cert.achievement,
+      })),
     };
 
     const BACKEND_URL = process.env.NEXT_PUBLIC_BACKEND_API_URL;
