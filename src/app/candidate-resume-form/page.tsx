@@ -189,32 +189,34 @@ const ResumePage = () => {
     // SPECIAL CASE: DYNAMIC ARRAY FIELDS
     // ------------------------------
     if (name.includes("-")) {
-      const [fieldName, idxStr] = name.split("-");
-      const index = Number(idxStr);
+      const parts = name.split("-");
+      const index = Number(parts[parts.length - 1]);
+      const fieldName = parts.length > 2 ? parts[1] : parts[0];
+      const prefix = parts.length > 2 ? parts[0] : "";
 
-      // NOTICE PERIOD INT ONLY
-      if (fieldName === "noticePeriod") {
-        value = value.replace(/\D/g, "");
-      }
-      // CURRENT WAGES INT ONLY
-      if (fieldName === "currentWages") {
+      // INT ONLY FIELDS
+      if (
+        fieldName === "noticePeriod" ||
+        fieldName === "currentWages" ||
+        fieldName === "year" ||
+        fieldName === "passingYear"
+      ) {
         value = value.replace(/\D/g, "");
       }
 
       // EXPERIENCE FIELDS
-      if (experienceSchema.shape[fieldName]) {
+      if (!prefix && experienceSchema.shape[fieldName]) {
         setExperiences((prev) =>
           prev.map((item, i) =>
             i === index ? { ...item, [fieldName]: value } : item
           )
         );
-        // Debounce field validation for UX
         scheduleValidate(name, value);
         return;
       }
 
       // EDUCATION FIELDS
-      if (educationSchema.shape[fieldName]) {
+      if (!prefix && educationSchema.shape[fieldName]) {
         setEducationList((prev) =>
           prev.map((item, i) =>
             i === index ? { ...item, [fieldName]: value } : item
@@ -225,7 +227,7 @@ const ResumePage = () => {
       }
 
       // SKILL FIELDS
-      if (skillSchema.shape[fieldName]) {
+      if (prefix === "skill" && skillSchema.shape[fieldName]) {
         setSkillsList((prev) =>
           prev.map((item, i) =>
             i === index ? { ...item, [fieldName]: value } : item
@@ -236,7 +238,7 @@ const ResumePage = () => {
       }
 
       // CERTIFICATION FIELDS
-      if (certificationSchema.shape[fieldName]) {
+      if (prefix === "cert" && certificationSchema.shape[fieldName]) {
         setCertificationList((prev) =>
           prev.map((item, i) =>
             i === index ? { ...item, [fieldName]: value } : item
@@ -1316,26 +1318,26 @@ const ResumePage = () => {
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                   <InputBox
                     label="Certificate Name"
-                    name={`name-${index}`}
+                    name={`cert-name-${index}`}
                     value={cert.name}
                     onChange={handleChange}
-                    error={errors[`name-${index}`]}
+                    error={errors[`cert-name-${index}`]}
                   />
 
                   <InputBox
                     label="Year"
-                    name={`year-${index}`}
+                    name={`cert-year-${index}`}
                     value={cert.year}
                     onChange={handleChange}
-                    error={errors[`year-${index}`]}
+                    error={errors[`cert-year-${index}`]}
                   />
 
                   <InputBox
                     label="Achievement/Position"
-                    name={`achievement-${index}`}
+                    name={`cert-achievement-${index}`}
                     value={cert.achievement}
                     onChange={handleChange}
-                    error={errors[`achievement-${index}`]}
+                    error={errors[`cert-achievement-${index}`]}
                   />
                 </div>
 
@@ -1382,34 +1384,20 @@ const ResumePage = () => {
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                   <InputBox
                     label="Skill"
-                    name={`name-${index}`}
+                    name={`skill-name-${index}`}
                     value={skill.name}
-                    onChange={(e) => {
-                      const val = e.target.value;
-                      const updated = [...skillsList];
-                      updated[index].name = val;
-                      setSkillsList(updated);
-                      setTouched((t) => ({ ...t, [`name-${index}`]: true }));
-                      scheduleValidate(`name-${index}`, val);
-                    }}
-                    error={errors[`name-${index}`]}
+                    onChange={handleChange}
+                    error={errors[`skill-name-${index}`]}
                     required
                   />
 
                   <SelectBox
                     label="Level"
-                    name={`level-${index}`}
+                    name={`skill-level-${index}`}
                     value={skill.level}
                     options={["Beginner", "Intermediate", "Expert"]}
-                    onChange={(e) => {
-                      const val = e.target.value;
-                      const updated = [...skillsList];
-                      updated[index].level = val;
-                      setSkillsList(updated);
-                      setTouched((t) => ({ ...t, [`level-${index}`]: true }));
-                      scheduleValidate(`level-${index}`, val);
-                    }}
-                    error={errors[`level-${index}`]}
+                    onChange={handleChange}
+                    error={errors[`skill-level-${index}`]}
                     required
                   />
                   <div className="md:col-span-1 hidden">

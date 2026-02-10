@@ -63,20 +63,22 @@ export function validateField(
   workType: "experienced" | "fresher"
 ): string | null {
   try {
-    // ARRAY FIELDS LIKE: fieldName-0
+    // ARRAY FIELDS LIKE: fieldName-0 or prefix-fieldName-0
     if (name.includes("-")) {
-      const [field] = name.split("-");
+      const parts = name.split("-");
+      const field = parts.length > 2 ? parts[1] : parts[0];
+      const prefix = parts.length > 2 ? parts[0] : "";
 
       const fieldSchema =
-        (experienceSchema as any).shape[field] ||
-        (educationSchema as any).shape[field] ||
-        (skillSchema as any).shape[field] ||
-        (certificationSchema as any).shape[field];
+        (!prefix && (experienceSchema as any).shape[field]) ||
+        (!prefix && (educationSchema as any).shape[field]) ||
+        (prefix === "skill" && (skillSchema as any).shape[field]) ||
+        (prefix === "cert" && (certificationSchema as any).shape[field]);
 
       if (!fieldSchema) return null;
 
-      // Conditional: don't validate hidden groups (though education is now for both)
-      if (workType === "fresher" && (experienceSchema as any).shape[field])
+      // Conditional: don't validate hidden groups
+      if (workType === "fresher" && !prefix && (experienceSchema as any).shape[field])
         return null;
 
       z.object({ [field]: fieldSchema }).parse({ [field]: value });
@@ -197,7 +199,14 @@ export function validateForm(payload: unknown) {
 
     if (path[0] === "skillsList") {
       const [, index, field] = path;
-      const key = `${String(field)}-${String(index)}`;
+      const key = `skill-${String(field)}-${String(index)}`;
+      mapped[key] = err.message;
+      return;
+    }
+
+    if (path[0] === "certificationList") {
+      const [, index, field] = path;
+      const key = `cert-${String(field)}-${String(index)}`;
       mapped[key] = err.message;
       return;
     }
