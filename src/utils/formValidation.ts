@@ -3,6 +3,7 @@ import {
   experienceSchema,
   educationSchema,
   skillSchema,
+  certificationSchema,
   resumeSchema,
 } from "@/schemas/resumeSchemas";
 
@@ -36,6 +37,9 @@ export const initialForm = {
   totalExperience: "",
   pincode: "",
   additionalInfo: "",
+  languagesKnown: [] as string[],
+  declarationChecked: false,
+  certificationList: [{ name: "", year: "", achievement: "" }],
 };
 
 export const normalizeIndianPhone = (input: string) => {
@@ -66,14 +70,13 @@ export function validateField(
       const fieldSchema =
         (experienceSchema as any).shape[field] ||
         (educationSchema as any).shape[field] ||
-        (skillSchema as any).shape[field];
+        (skillSchema as any).shape[field] ||
+        (certificationSchema as any).shape[field];
 
       if (!fieldSchema) return null;
 
-      // Conditional: don't validate hidden groups
+      // Conditional: don't validate hidden groups (though education is now for both)
       if (workType === "fresher" && (experienceSchema as any).shape[field])
-        return null;
-      if (workType === "experienced" && (educationSchema as any).shape[field])
         return null;
 
       z.object({ [field]: fieldSchema }).parse({ [field]: value });
@@ -120,6 +123,10 @@ export function validateField(
       totalExperience: z.string().optional(),
       pincode: z.string().length(6, "PIN CODE must be 6 digits").regex(/^\d+$/, "PIN CODE must contain only numbers"),
       additionalInfo: z.string().optional(),
+      languagesKnown: z.array(z.string()).min(1, "Select at least one language"),
+      declarationChecked: z.boolean().refine((val) => val === true, {
+        message: "You must certify that the information is true",
+      }),
     };
 
     const fieldSchema = normalFieldSchemas[name];

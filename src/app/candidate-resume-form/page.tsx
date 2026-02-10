@@ -11,12 +11,14 @@ import Popup from "@/components/resume/Popup";
 import InputBox from "@/components/resume/InputBox";
 import SelectBox from "@/components/resume/SelectBox";
 import DatePicker from "@/components/resume/DatePicker";
+import MultiSelectBox from "@/components/resume/MultiSelectBox";
 import EmailStep from "@/components/resume/popup/EmailStep";
 import OtpStep from "@/components/resume/popup/OtpStep";
 import {
   experienceSchema,
   educationSchema,
   skillSchema,
+  certificationSchema,
   resumeSchema,
 } from "@/schemas/resumeSchemas";
 import { useGlobalUI } from "@/components/global/GlobalUIProvider";
@@ -40,6 +42,12 @@ type IndiaJson = {
   };
 };
 
+const INDIAN_LANGUAGES = [
+  "Hindi", "English", "Bengali", "Marathi", "Telugu", "Tamil", "Gujarati", "Urdu", "Kannada", "Odia",
+  "Malayalam", "Punjabi", "Sanskrit", "Assamese", "Maithili", "Santali", "Kashmiri", "Nepali", "Gondi",
+  "Sindhi", "Konkani", "Dogri", "Manipuri", "Khasi", "Bodo", "Garo", "Mizo", "Ho", "Kui", "Mundari", "Tripuri"
+];
+
 type WorkType = "experienced" | "fresher";
 
 type ExperienceEntry = {
@@ -48,11 +56,16 @@ type ExperienceEntry = {
   noticePeriod: string;
   startDate: string;
   endDate: string;
-  stillWorkingDate: string;
   currentWages?: string;
   currentCity?: string;
   currentVillage?: string;
   currentVillageOther?: string;
+};
+
+type CertificationEntry = {
+  name: string;
+  year: string;
+  achievement: string;
 };
 
 const ResumePage = () => {
@@ -88,12 +101,15 @@ const ResumePage = () => {
       noticePeriod: "",
       startDate: "",
       endDate: "",
-      stillWorkingDate: "",
     },
   ]);
 
   const [educationList, setEducationList] = useState([
     { degree: "", university: "", passingYear: "" },
+  ]);
+
+  const [certificationList, setCertificationList] = useState<CertificationEntry[]>([
+    { name: "", year: "", achievement: "" },
   ]);
 
   // Default years to "0" since we removed the input but schema might check min length?
@@ -154,8 +170,13 @@ const ResumePage = () => {
       | React.ChangeEvent<HTMLInputElement>
       | React.ChangeEvent<HTMLTextAreaElement>
       | React.ChangeEvent<HTMLSelectElement>
+      | { target: { name: string; value: any; type?: string; checked?: boolean } }
   ) => {
     let { name, value } = e.target;
+
+    if ("type" in e.target && e.target.type === "checkbox") {
+      value = (e.target as any).checked;
+    }
     // Mark field as touched (so we show validation only after interaction)
     setTouched((t) => ({ ...t, [name]: true }));
 
@@ -206,6 +227,17 @@ const ResumePage = () => {
       // SKILL FIELDS
       if (skillSchema.shape[fieldName]) {
         setSkillsList((prev) =>
+          prev.map((item, i) =>
+            i === index ? { ...item, [fieldName]: value } : item
+          )
+        );
+        scheduleValidate(name, value);
+        return;
+      }
+
+      // CERTIFICATION FIELDS
+      if (certificationSchema.shape[fieldName]) {
+        setCertificationList((prev) =>
           prev.map((item, i) =>
             i === index ? { ...item, [fieldName]: value } : item
           )
@@ -579,6 +611,7 @@ const ResumePage = () => {
       setForm(initialForm);
       setTouched({});
       setFormSubmitted(false);
+      setCertificationList([{ name: "", year: "", achievement: "" }]);
       setExperiences([
         {
           position: "",
@@ -586,7 +619,6 @@ const ResumePage = () => {
           noticePeriod: "",
           startDate: "",
           endDate: "",
-          stillWorkingDate: "",
           currentWages: "",
           currentCity: "",
           currentVillage: "",
@@ -893,37 +925,15 @@ const ResumePage = () => {
                 required
               />
 
-              <div className="lg:col-span-3">
-                <div className="relative w-full h-28">
-                  <textarea
-                    name="summary"
-                    value={form.summary}
-                    onChange={handleChange}
-                    placeholder=" "
-                    className={`peer w-full px-4 pt-6 pb-2 rounded-xl bg-white
-                      border outline-none transition-all
-                      ${errors.summary ? "border-red-500" : "border-gray-300"}
-                      focus:border-[#72B76A] focus:ring-1 focus:ring-[#72B76A]
-                      resize-none h-full`}
-                  />
-
-                  <label
-                    className={`absolute left-4 px-1 bg-white text-gray-500 pointer-events-none
-                      transition-all duration-150
-                      top-1/2 -translate-y-1/2
-                      peer-focus:top-1 peer-focus:-translate-y-1/2 peer-focus:text-sm peer-focus:text-[#72B76A]
-                      peer-placeholder-shown:top-1/2 peer-placeholder-shown:-translate-y-1/2 peer-placeholder-shown:text-base
-                      peer-not-placeholder-shown:top-1 peer-not-placeholder-shown:-translate-y-1/2 peer-not-placeholder-shown:text-sm peer-not-placeholder-shown:text-[#72B76A]`}
-                  >
-                    Summary
-                  </label>
-                  {errors.summary && (
-                    <p className="text-red-500 text-xs mt-1">
-                      {errors.summary}
-                    </p>
-                  )}
-                </div>
-              </div>
+              <MultiSelectBox
+                label="Languages Known"
+                name="languagesKnown"
+                value={form.languagesKnown}
+                options={INDIAN_LANGUAGES}
+                onChange={handleChange}
+                error={errors.languagesKnown}
+                required
+              />
             </div>
             {/* duplicateError is shown via global toast; do not render inline */}
           </>
@@ -946,28 +956,15 @@ const ResumePage = () => {
                         noticePeriod: "",
                         startDate: "",
                         endDate: "",
-                        stillWorkingDate: "",
                       },
                     ]
                     : prev
                 );
 
-                // Education is NOT required for experienced → clear it
-                setEducationList([]);
-                // Remove any education-related validation errors when switching
-                setErrors((prev) => {
-                  const copy = { ...prev };
-                  Object.keys(copy).forEach((k) => {
-                    if (
-                      k.startsWith("degree-") ||
-                      k.startsWith("university-") ||
-                      k.startsWith("passingYear-")
-                    ) {
-                      delete copy[k];
-                    }
-                  });
-                  return copy;
-                });
+                // Education is now required for both
+                if (educationList.length === 0) {
+                  setEducationList([{ degree: "", university: "", passingYear: "" }]);
+                }
               }}
               className={`
       w-full h-12 rounded-lg transition cursor-pointer
@@ -987,15 +984,13 @@ const ResumePage = () => {
                 setWorkType("fresher");
 
                 // Education is required → ensure at least one row
-                setEducationList((prev) =>
-                  prev.length === 0
-                    ? [{ degree: "", university: "", passingYear: "" }]
-                    : prev
-                );
+                if (educationList.length === 0) {
+                  setEducationList([{ degree: "", university: "", passingYear: "" }]);
+                }
 
-                // Experience is NOT required for fresher → clear it
+                // Clear experiences for fresher logic
                 setExperiences([]);
-                // Remove any experience-related validation errors when switching
+                // Remove any experience-related validation errors
                 setErrors((prev) => {
                   const copy = { ...prev };
                   Object.keys(copy).forEach((k) => {
@@ -1004,8 +999,7 @@ const ResumePage = () => {
                       k.startsWith("company-") ||
                       k.startsWith("noticePeriod-") ||
                       k.startsWith("startDate-") ||
-                      k.startsWith("endDate-") ||
-                      k.startsWith("stillWorkingDate-")
+                      k.startsWith("endDate-")
                     ) {
                       delete copy[k];
                     }
@@ -1025,14 +1019,14 @@ const ResumePage = () => {
             </button>
           </div>
 
-          {/* Experience / Education */}
+          {/* Experience */}
           {workType === "experienced" && (
             <div className="space-y-4">
               <h3 className="text-lg font-semibold text-gray-800">
                 Work Experience
               </h3>
 
-
+              {/* Summary moved to bottom */}
 
               {experiences.map((exp, index) => (
                 <div
@@ -1044,35 +1038,7 @@ const ResumePage = () => {
                       label="Position"
                       name={`position-${index}`}
                       value={exp.position}
-                      onChange={(e) => {
-                        const val = e.target.value;
-                        setExperiences((p) =>
-                          p.map((v, i) =>
-                            i === index ? { ...v, position: val } : v
-                          )
-                        );
-
-                        const err = validateFieldUtil(
-                          `position-${index}`,
-                          val,
-                          workType
-                        );
-                        if (!err) {
-                          setErrors((prev) => {
-                            const c = { ...prev };
-                            delete c[`position-${index}`];
-                            return c;
-                          });
-                        } else if (
-                          touched[`position-${index}`] ||
-                          formSubmitted
-                        ) {
-                          setErrors((prev) => ({
-                            ...prev,
-                            [`position-${index}`]: err,
-                          }));
-                        }
-                      }}
+                      onChange={handleChange}
                       error={errors[`position-${index}`]}
                       required
                     />
@@ -1080,435 +1046,329 @@ const ResumePage = () => {
                       label="Company Name"
                       name={`company-${index}`}
                       value={exp.company}
-                      onChange={(e) => {
-                        const val = e.target.value;
-                        setExperiences((p) =>
-                          p.map((v, i) =>
-                            i === index ? { ...v, company: val } : v
-                          )
-                        );
-
-                        const err = validateFieldUtil(
-                          `company-${index}`,
-                          val,
-                          workType
-                        );
-                        if (!err) {
-                          setErrors((prev) => {
-                            const c = { ...prev };
-                            delete c[`company-${index}`];
-                            return c;
-                          });
-                        } else if (
-                          touched[`company-${index}`] ||
-                          formSubmitted
-                        ) {
-                          setErrors((prev) => ({
-                            ...prev,
-                            [`company-${index}`]: err,
-                          }));
-                        }
-                      }}
+                      onChange={handleChange}
                       error={errors[`company-${index}`]}
                       required
                     />
-                    {index === 0 && (
-                      <InputBox
-                        label="Notice Period (Days)"
-                        name={`noticePeriod-${index}`}
-                        value={exp.noticePeriod}
-                        onChange={(e) => {
-                          const val = e.target.value.replace(/\D/g, "");
-                          setExperiences((p) =>
-                            p.map((v, i) =>
-                              i === index ? { ...v, noticePeriod: val } : v
-                            )
-                          );
+                    <InputBox
+                      label="Notice Period (Days)"
+                      name={`noticePeriod-${index}`}
+                      value={exp.noticePeriod}
+                      onChange={handleChange}
+                      error={errors[`noticePeriod-${index}`]}
+                    />
 
-                          const err = validateFieldUtil(
-                            `noticePeriod-${index}`,
-                            val,
-                            workType
-                          );
-                          if (!err) {
-                            setErrors((prev) => {
-                              const c = { ...prev };
-                              delete c[`noticePeriod-${index}`];
-                              return c;
-                            });
-                          } else if (
-                            touched[`noticePeriod-${index}`] ||
-                            formSubmitted
-                          ) {
-                            setErrors((prev) => ({
-                              ...prev,
-                              [`noticePeriod-${index}`]: err,
-                            }));
-                          }
-                        }}
-                        error={errors[`noticePeriod-${index}`]}
-                      />
-                    )}
-
-                    {/* NEW FIELDS */}
                     <InputBox
                       label="Current Salary (₹)"
                       name={`currentWages-${index}`}
                       value={exp.currentWages || ""}
-                      onChange={(e) => {
-                        const val = e.target.value.replace(/\D/g, "");
-                        setExperiences(p => p.map((v, i) => i === index ? { ...v, currentWages: val } : v));
-                        // validation logic...
-                        const err = validateFieldUtil(`currentWages-${index}`, val, workType);
-                        if (!err) {
-                          setErrors(prev => { const c = { ...prev }; delete c[`currentWages-${index}`]; return c; });
-                        } else {
-                          setErrors(prev => ({ ...prev, [`currentWages-${index}`]: err }));
-                        }
-                      }}
+                      onChange={handleChange}
                       error={errors[`currentWages-${index}`]}
                       required
                     />
-
                     <SearchableSelectBox
                       label="Current City"
                       name={`currentCity-${index}`}
                       value={exp.currentCity || ""}
-                      options={cityOptions} // Ideally global scope options or per state? Assuming reuse of global options for now, but really this depends on a State selection inside experience? 
-                      // Spec says: "Searchable Dropdowns...". 
-                      // If experience location is arbitrary, we might need a State dropdown inside experience too.
-                      // HOWEVER, Requirement just says: "Current City" and "Current Village".
-                      // If we reuse `cityOptions`, it depends on `form.state`. That's incorrect for past experience which could be anywhere.
-                      // Simple fix: Just use a SEARCHABLE box with ALL cities? Or just a text input that SEARCHES?
-                      // Given strict constraint on no changes to existing functionality, but this is NEW functionality.
-                      // I will use SEARCHABLE box but with `availabilityCityOptions`? No.
-                      // I will use `cityOptions` (from form.state) as a placeholder, but really it should be independent.
-                      // For now, I'll use `availabilityCityOptions` (just listing something) OR better:
-                      // Since I cannot fetch ALL cities easily without a rigorous State selection,
-                      // I will implement it as a simple Text Input for now IF I can't support proper cascading here.
-                      // BUT Requirement says "Global UI Component (Searchable Dropdowns)".
-                      // I'll stick to SearchableSelectBox using `availabilityCityOptions` (assuming candidates prefer current location or home location suggestions).
-                      // Actually, let's use `InputBox` for City if we can't do cascading, OR add State dropdown to experience.
-                      // Re-reading Req: "Work Location" -> "Add two inputs: Current City and Current Village".
-                      // It doesn't explicitly force cascading inside experience.
-                      // I will use `SearchableSelectBox` with `cityOptions` as default set, but allow typing? No, strict.
-                      // Okay, I will use `cityOptions` assuming they work in the same region.
-                      // Wait, I will use `InputBox` for now if uncertain, to avoid blocking. 
-                      // NO, I must use Searchable. 
-                      // I'll pass empty options [] if unrelated, effectively making it... wait.
-                      // I will use `cityOptions` for now.
-                      onChange={(e) => {
-                        const val = e.target.value;
-                        setExperiences(p => p.map((v, i) => i === index ? { ...v, currentCity: val } : v));
-                        // Trigger validation
-                        const err = validateFieldUtil(`currentCity-${index}`, val, workType);
-                        if (!err) {
-                          setErrors(prev => { const c = { ...prev }; delete c[`currentCity-${index}`]; return c; });
-                        } else {
-                          setErrors(prev => ({ ...prev, [`currentCity-${index}`]: err }));
-                        }
-                      }}
+                      options={cityOptions}
+                      onChange={handleChange}
                       error={errors[`currentCity-${index}`]}
                       required
                     />
-
                     <SearchableSelectBox
                       label="Current Village"
                       name={`currentVillage-${index}`}
                       value={exp.currentVillage || ""}
                       options={[...villageOptions, "Other"]}
-                      onChange={(e) => {
-                        const val = e.target.value;
-                        setExperiences(p => p.map((v, i) => i === index ? { ...v, currentVillage: val } : v));
-                        // validation
-                        const err = validateFieldUtil(`currentVillage-${index}`, val, workType);
-                        if (!err) {
-                          setErrors(prev => { const c = { ...prev }; delete c[`currentVillage-${index}`]; return c; });
-                        } else {
-                          setErrors(prev => ({ ...prev, [`currentVillage-${index}`]: err }));
-                        }
-                      }}
+                      onChange={handleChange}
                       error={errors[`currentVillage-${index}`]}
                       required
                     />
-                  </div>
 
-                  {/* Manual Village for Experience if Other Selected */}
-                  {exp.currentVillage === "Other" && (
-                    <div className="grid grid-cols-1">
-                      <InputBox
-                        label="Enter Village Name"
-                        name={`currentVillageOther-${index}`}
-                        value={exp.currentVillageOther || ""}
-                        onChange={(e) => {
-                          const val = e.target.value;
-                          setExperiences(p => p.map((v, i) => i === index ? { ...v, currentVillageOther: val } : v));
-                        }}
-                        error={errors[`currentVillageOther-${index}`]}
-                        required
-                      />
-                    </div>
-                  )}
+                    {exp.currentVillage === "Other" && (
+                      <div className="md:col-span-3">
+                        <InputBox
+                          label="Enter Village Name"
+                          name={`currentVillageOther-${index}`}
+                          value={exp.currentVillageOther || ""}
+                          onChange={handleChange}
+                          error={errors[`currentVillageOther-${index}`]}
+                          required
+                        />
+                      </div>
+                    )}
 
-                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                     <DatePicker
                       label="Start Date"
                       name={`startDate-${index}`}
                       value={exp.startDate}
-                      onChange={(e) => {
-                        const newStartDate = e.target.value;
-                        setExperiences((p) =>
-                          p.map((v, i) =>
-                            i === index ? { ...v, startDate: newStartDate } : v
-                          )
-                        );
-                        // mark touched for this array field
-                        setTouched((t) => ({
-                          ...t,
-                          [`startDate-${index}`]: true,
-                        }));
-                        // Validate against endDate if it exists
-                        if (exp.endDate) {
-                          const msg = validateExperienceDatesUtil(
-                            index,
-                            newStartDate,
-                            exp.endDate
-                          );
-                          setErrors((prev) => {
-                            const copy = { ...prev };
-                            if (msg) copy[`endDate-${index}`] = msg;
-                            else delete copy[`endDate-${index}`];
-                            return copy;
-                          });
-                        }
-                        // validate the startDate field itself (debounced)
-                        scheduleValidate(`startDate-${index}`, newStartDate);
-                      }}
+                      onChange={handleChange}
                       error={errors[`startDate-${index}`]}
-                      required
                     />
-
                     <DatePicker
                       label="End Date"
                       name={`endDate-${index}`}
                       value={exp.endDate}
-                      onChange={(e) => {
-                        const newEndDate = e.target.value;
-                        setExperiences((prev) =>
-                          prev.map((v, i) =>
-                            i === index ? { ...v, endDate: newEndDate } : v
-                          )
-                        );
-                        // mark touched and validate
-                        setTouched((t) => ({
-                          ...t,
-                          [`endDate-${index}`]: true,
-                        }));
-                        // Validate against startDate in real-time
-                        const msg = validateExperienceDatesUtil(
-                          index,
-                          exp.startDate,
-                          newEndDate
-                        );
-                        setErrors((prev) => {
-                          const copy = { ...prev };
-                          if (msg) copy[`endDate-${index}`] = msg;
-                          else delete copy[`endDate-${index}`];
-                          return copy;
-                        });
-                        scheduleValidate(`endDate-${index}`, newEndDate);
-                      }}
+                      onChange={handleChange}
                       error={errors[`endDate-${index}`]}
                     />
 
-                    <DatePicker
-                      label="Still Working For"
-                      name={`stillWorkingDate-${index}`}
-                      value={exp.stillWorkingDate}
-                      onChange={(e) => {
-                        const val = e.target.value;
-                        setExperiences((prev) =>
-                          prev.map((v, i) =>
-                            i === index ? { ...v, stillWorkingDate: val } : v
-                          )
-                        );
-                        setTouched((t) => ({
-                          ...t,
-                          [`stillWorkingDate-${index}`]: true,
-                        }));
-                        scheduleValidate(`stillWorkingDate-${index}`, val);
-                      }}
-                      error={errors[`stillWorkingDate-${index}`]}
+                    <InputBox
+                      label="Experience (in Years)"
+                      name="totalExperience"
+                      value={form.totalExperience}
+                      onChange={handleChange}
+                      error={errors.totalExperience}
+                      required
                     />
                   </div>
 
-                  <div className="flex gap-2">
-                    <button
-                      type="button"
-                      onClick={() =>
-                        setExperiences((p) => [
-                          ...p,
-                          {
-                            position: "",
-                            company: "",
-                            noticePeriod: "",
-                            startDate: "",
-                            endDate: "",
-                            stillWorkingDate: "",
-                            currentWages: "",
-                            currentCity: "",
-                            currentVillage: "",
-                            currentVillageOther: "",
-                          },
-                        ])
-                      }
-                      className="w-7 h-7 text-xl font-bold rounded-md text-[#72B76A] border border-[#72B76A]"
-                    >
-                      +
-                    </button>
+                  {index === experiences.length - 1 && (
+                    <div className="space-y-4">
+                      <div className="relative w-full h-28">
+                        <textarea
+                          name="summary"
+                          value={form.summary}
+                          onChange={handleChange}
+                          placeholder=" "
+                          className={`peer w-full px-4 pt-6 pb-2 rounded-xl bg-white
+                            border outline-none transition-all
+                            ${errors.summary ? "border-red-500" : "border-gray-300"}
+                            focus:border-[#72B76A] focus:ring-1 focus:ring-[#72B76A]
+                            resize-none h-full`}
+                        />
+                        <label
+                          className={`absolute left-4 px-1 bg-white text-gray-500 pointer-events-none
+                            transition-all duration-150
+                            top-1/2 -translate-y-1/2
+                            peer-focus:top-1 peer-focus:-translate-y-1/2 peer-focus:text-sm peer-focus:text-[#72B76A]
+                            peer-placeholder-shown:top-1/2 peer-placeholder-shown:-translate-y-1/2 peer-placeholder-shown:text-base
+                            peer-not-placeholder-shown:top-1 peer-not-placeholder-shown:-translate-y-1/2 peer-not-placeholder-shown:text-sm peer-not-placeholder-shown:text-[#72B76A]
+                            ${form.summary ? "top-1 -translate-y-1/2 text-sm text-[#72B76A]" : ""}
+                            `}
+                        >
+                          Summary
+                        </label>
+                        {errors.summary && <p className="text-red-500 text-xs mt-1">{errors.summary}</p>}
+                      </div>
 
-                    <button
-                      type="button"
-                      disabled={experiences.length === 1}
-                      onClick={() =>
-                        setExperiences((p) => p.filter((_, i) => i !== index))
-                      }
-                      className={`w-7 h-7 text-xl font-bold rounded-md ${experiences.length === 1
-                        ? "text-[#A6D8A3] border border-[#A6D8A3] font-bold rounded-md cursor-not-allowed"
-                        : "bg-[#72B76A] text-white"
-                        }`}
-                    >
-                      –
-                    </button>
-                  </div>
+                      <div className="flex gap-2">
+                        <button
+                          type="button"
+                          onClick={() =>
+                            setExperiences((p) => [
+                              ...p,
+                              {
+                                position: "",
+                                company: "",
+                                noticePeriod: "",
+                                startDate: "",
+                                endDate: "",
+                              },
+                            ])
+                          }
+                          className="w-10 h-10 text-2xl font-bold rounded-xl text-[#72B76A] border-2 border-[#72B76A] hover:bg-[#72B76A] hover:text-white transition-colors flex items-center justify-center"
+                        >
+                          +
+                        </button>
+
+                        <button
+                          type="button"
+                          disabled={experiences.length === 1}
+                          onClick={() =>
+                            setExperiences((p) => p.filter((_, i) => i !== p.length - 1))
+                          }
+                          className={`w-10 h-10 text-2xl font-bold rounded-xl flex items-center justify-center transition-colors ${experiences.length === 1
+                            ? "text-gray-300 border-2 border-gray-200 cursor-not-allowed"
+                            : "text-white bg-[#72B76A]"
+                            }`}
+                        >
+                          –
+                        </button>
+                      </div>
+                    </div>
+                  )}
                 </div>
               ))}
 
-              <div className="w-full md:w-1/3">
-                <InputBox
-                  label="Experience (in Years)"
-                  name="totalExperience"
-                  value={form.totalExperience || ""}
-                  onChange={(e) => {
-                    // Enforce digits only
-                    const val = e.target.value.replace(/\D/g, "");
-                    handleChange({ target: { name: "totalExperience", value: val } } as any);
-                  }}
-                  error={errors.totalExperience}
-                  required
-                />
+            </div>
+          )}
+
+          {/* Education Details - Common for both */}
+          <div className="space-y-4">
+            <h3 className="text-lg font-semibold text-gray-800">
+              Education Details
+            </h3>
+
+            {educationList.map((edu, index) => (
+              <div
+                key={index}
+                className="border border-gray-200 rounded-xl p-5 bg-white/70 space-y-4"
+              >
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                  <InputBox
+                    label="Degree"
+                    name={`degree-${index}`}
+                    value={edu.degree}
+                    onChange={(e) => {
+                      const val = e.target.value;
+                      const updated = [...educationList];
+                      updated[index].degree = val;
+                      setEducationList(updated);
+                      setTouched((t) => ({
+                        ...t,
+                        [`degree-${index}`]: true,
+                      }));
+                      scheduleValidate(`degree-${index}`, val);
+                    }}
+                    error={errors[`degree-${index}`]}
+                    required
+                  />
+
+                  <InputBox
+                    label="University"
+                    name={`university-${index}`}
+                    value={edu.university}
+                    onChange={(e) => {
+                      const val = e.target.value;
+                      const updated = [...educationList];
+                      updated[index].university = val;
+                      setEducationList(updated);
+                      setTouched((t) => ({
+                        ...t,
+                        [`university-${index}`]: true,
+                      }));
+                      scheduleValidate(`university-${index}`, val);
+                    }}
+                    error={errors[`university-${index}`]}
+                    required
+                  />
+
+                  <InputBox
+                    label="Passing Year"
+                    name={`passingYear-${index}`}
+                    value={edu.passingYear}
+                    onChange={(e) => {
+                      const val = e.target.value;
+                      const updated = [...educationList];
+                      updated[index].passingYear = val;
+                      setEducationList(updated);
+                      setTouched((t) => ({
+                        ...t,
+                        [`passingYear-${index}`]: true,
+                      }));
+                      scheduleValidate(`passingYear-${index}`, val);
+                    }}
+                    error={errors[`passingYear-${index}`]}
+                    required
+                  />
+                </div>
+
+                <div className="flex gap-2">
+                  <button
+                    type="button"
+                    onClick={() =>
+                      setEducationList([
+                        ...educationList,
+                        {
+                          degree: "",
+                          university: "",
+                          passingYear: "",
+                        },
+                      ])
+                    }
+                    className="w-7 h-7 text-xl font-bold rounded-md text-[#72B76A] border border-[#72B76A]"
+                  >
+                    +
+                  </button>
+
+                  <button
+                    type="button"
+                    disabled={educationList.length === 1}
+                    onClick={() =>
+                      setEducationList(
+                        educationList.filter((_, i) => i !== index)
+                      )
+                    }
+                    className={`w-7 h-7 text-xl ${educationList.length === 1
+                      ? "text-[#A6D8A3] border border-[#A6D8A3]  font-bold rounded-md  cursor-not-allowed"
+                      : "bg-[#72B76A] text-white"
+                      }`}
+                  >
+                    –
+                  </button>
+                </div>
               </div>
-            </div>
-          )}
+            ))}
+          </div>
 
-          {workType === "fresher" && (
-            <div className="space-y-4">
-              <h3 className="text-lg font-semibold text-gray-800">
-                Education Details
-              </h3>
+          {/* Certifications - Optional, Common for both */}
+          <div className="space-y-4">
+            <h3 className="text-lg font-semibold text-gray-800">
+              Certifications (Optional)
+            </h3>
 
-              {educationList.map((edu, index) => (
-                <div
-                  key={index}
-                  className="border border-gray-200 rounded-xl p-5 bg-white/70 space-y-4"
-                >
-                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                    <InputBox
-                      label="Degree"
-                      name={`degree-${index}`}
-                      value={edu.degree}
-                      onChange={(e) => {
-                        const val = e.target.value;
-                        const updated = [...educationList];
-                        updated[index].degree = val;
-                        setEducationList(updated);
-                        setTouched((t) => ({
-                          ...t,
-                          [`degree-${index}`]: true,
-                        }));
-                        scheduleValidate(`degree-${index}`, val);
-                      }}
-                      error={errors[`degree-${index}`]}
-                      required
-                    />
+            {certificationList.map((cert, index) => (
+              <div
+                key={index}
+                className="border border-gray-200 rounded-xl p-5 bg-white/70 space-y-4"
+              >
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                  <InputBox
+                    label="Certificate Name"
+                    name={`name-${index}`}
+                    value={cert.name}
+                    onChange={handleChange}
+                    error={errors[`name-${index}`]}
+                  />
 
-                    <InputBox
-                      label="University"
-                      name={`university-${index}`}
-                      value={edu.university}
-                      onChange={(e) => {
-                        const val = e.target.value;
-                        const updated = [...educationList];
-                        updated[index].university = val;
-                        setEducationList(updated);
-                        setTouched((t) => ({
-                          ...t,
-                          [`university-${index}`]: true,
-                        }));
-                        scheduleValidate(`university-${index}`, val);
-                      }}
-                      error={errors[`university-${index}`]}
-                      required
-                    />
+                  <InputBox
+                    label="Year"
+                    name={`year-${index}`}
+                    value={cert.year}
+                    onChange={handleChange}
+                    error={errors[`year-${index}`]}
+                  />
 
-                    <InputBox
-                      label="Passing Year"
-                      name={`passingYear-${index}`}
-                      value={edu.passingYear}
-                      onChange={(e) => {
-                        const val = e.target.value;
-                        const updated = [...educationList];
-                        updated[index].passingYear = val;
-                        setEducationList(updated);
-                        setTouched((t) => ({
-                          ...t,
-                          [`passingYear-${index}`]: true,
-                        }));
-                        scheduleValidate(`passingYear-${index}`, val);
-                      }}
-                      error={errors[`passingYear-${index}`]}
-                      required
-                    />
-                  </div>
-
-                  <div className="flex gap-2">
-                    <button
-                      type="button"
-                      onClick={() =>
-                        setEducationList([
-                          ...educationList,
-                          {
-                            degree: "",
-                            university: "",
-                            passingYear: "",
-                          },
-                        ])
-                      }
-                      className="w-7 h-7 text-xl font-bold rounded-md text-[#72B76A] border border-[#72B76A]"
-                    >
-                      +
-                    </button>
-
-                    <button
-                      type="button"
-                      disabled={educationList.length === 1}
-                      onClick={() =>
-                        setEducationList(
-                          educationList.filter((_, i) => i !== index)
-                        )
-                      }
-                      className={`w-7 h-7 text-xl ${educationList.length === 1
-                        ? "text-[#A6D8A3] border border-[#A6D8A3]  font-bold rounded-md  cursor-not-allowed"
-                        : "bg-[#72B76A] text-white"
-                        }`}
-                    >
-                      –
-                    </button>
-                  </div>
+                  <InputBox
+                    label="Achievement/Position"
+                    name={`achievement-${index}`}
+                    value={cert.achievement}
+                    onChange={handleChange}
+                    error={errors[`achievement-${index}`]}
+                  />
                 </div>
-              ))}
-            </div>
-          )}
+
+                <div className="flex gap-2">
+                  <button
+                    type="button"
+                    onClick={() =>
+                      setCertificationList((p) => [
+                        ...p,
+                        { name: "", year: "", achievement: "" },
+                      ])
+                    }
+                    className="w-7 h-7 text-xl font-bold rounded-md text-[#72B76A] border border-[#72B76A]"
+                  >
+                    +
+                  </button>
+                  <button
+                    type="button"
+                    disabled={certificationList.length === 1}
+                    onClick={() =>
+                      setCertificationList((p) => p.filter((_, i) => i !== index))
+                    }
+                    className={`w-7 h-7 text-xl font-bold rounded-md ${certificationList.length === 1
+                      ? "text-[#A6D8A3] border border-[#A6D8A3] font-bold rounded-md cursor-not-allowed"
+                      : "bg-[#72B76A] text-white"
+                      }`}
+                  >
+                    –
+                  </button>
+                </div>
+              </div>
+            ))}
+          </div>
 
           {/* Skills */}
           <div className="space-y-4">
@@ -1829,12 +1689,29 @@ const ResumePage = () => {
             </div>
           </div>
 
+          <div className="flex items-center gap-3 p-4 bg-white/50 rounded-xl border border-gray-200">
+            <input
+              type="checkbox"
+              id="declarationChecked"
+              name="declarationChecked"
+              checked={form.declarationChecked || false}
+              onChange={handleChange}
+              className="w-5 h-5 rounded border-gray-300 text-[#72B76A] focus:ring-[#72B76A]"
+            />
+            <label htmlFor="declarationChecked" className="text-sm text-gray-700 cursor-pointer">
+              I hereby declare that all the information provided above is true.
+            </label>
+            {errors.declarationChecked && (
+              <p className="text-red-500 text-xs mt-1">{errors.declarationChecked}</p>
+            )}
+          </div>
+
           <button
             type="submit"
-            disabled={loading}
+            disabled={loading || !form.declarationChecked}
             className={`submit-btn 
-              w-full h-12 cursor-pointer ${loading
-                ? "bg-[#5e9b55] opacity-90 cursor-not-allowed"
+              w-full h-12 cursor-pointer ${loading || !form.declarationChecked
+                ? "bg-[#5e9b55] opacity-50 cursor-not-allowed"
                 : "bg-[#72B76A]"
               } text-white rounded-xl 
               font-semibold text-lg transition active:scale-95 flex items-center justify-center gap-2

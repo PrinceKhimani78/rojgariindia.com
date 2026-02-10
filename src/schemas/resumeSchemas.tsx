@@ -11,7 +11,6 @@ export const experienceSchema = z
     noticePeriod: z.string().optional(),
     startDate: z.string().min(1, "Start date required"),
     endDate: z.string().optional(),
-    stillWorkingDate: z.string().optional(),
   })
   .refine(
     (data) => {
@@ -35,11 +34,10 @@ export const educationSchema = z.object({
   passingYear: z.string().min(1, "Passing year is required"),
 });
 
-// Optional education schema for experienced candidates
-export const educationSchemaOptional = z.object({
-  degree: z.string().optional(),
-  university: z.string().optional(),
-  passingYear: z.string().optional(),
+export const certificationSchema = z.object({
+  name: z.string().optional(),
+  year: z.string().optional(),
+  achievement: z.string().optional(),
 });
 
 export const skillSchema = z.object({
@@ -52,7 +50,7 @@ const baseSchema = {
   firstName: z.string().min(1, "First name required"),
   surName: z.string().min(1, "Last name required"),
   email: z.string().email("Invalid email"),
-  totalExperience: z.string().optional(), // Moved from skills, logically optional or required?
+  totalExperience: z.string().optional(),
   dob: z.string().min(1, "Date of birth required"),
   gender: z.enum(["Male", "Female", "Other"], {
     message: "Select gender",
@@ -74,8 +72,9 @@ const baseSchema = {
       "Enter a valid Indian mobile number"
     ),
   skillsList: z.array(skillSchema).min(1, "Add at least one skill"),
+  languagesKnown: z.array(z.string()).min(1, "Select at least one language"),
 
-  // Location Fields (Adding them to ensure validation works on submit)
+  // Location Fields
   state: z.string().min(1, "State required"),
   district: z.string().min(1, "District required"),
   city: z.string().min(1, "City required"),
@@ -98,6 +97,10 @@ const baseSchema = {
     .string()
     .length(6, "PIN CODE must be 6 digits")
     .regex(/^\d+$/, "PIN CODE must contain only numbers"),
+
+  declarationChecked: z.boolean().refine((val) => val === true, {
+    message: "You must certify that the information is true",
+  }),
 };
 
 // Schema for experienced candidates
@@ -105,7 +108,8 @@ const experiencedSchema = z.object({
   ...baseSchema,
   workType: z.literal("experienced"),
   experiences: z.array(experienceSchema).min(1, "Add at least one experience"),
-  educationList: z.array(educationSchemaOptional).optional().default([]),
+  educationList: z.array(educationSchema).min(1, "Add at least one education"),
+  certificationList: z.array(certificationSchema).optional().default([]),
 });
 
 // Schema for fresher candidates
@@ -114,6 +118,7 @@ const fresherSchema = z.object({
   workType: z.literal("fresher"),
   experiences: z.array(experienceSchema).optional().default([]),
   educationList: z.array(educationSchema).min(1, "Add at least one education"),
+  certificationList: z.array(certificationSchema).optional().default([]),
 });
 
 // Union of both schemas
