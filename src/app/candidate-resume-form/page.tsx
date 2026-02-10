@@ -497,33 +497,41 @@ const ResumePage = () => {
       additional_info: form.additionalInfo,
       pincode: form.pincode,
 
-      work_experience: experiences.map((exp) => ({
-        position: exp.position,
-        company: exp.company,
-        start_date: exp.startDate,
-        end_date: exp.endDate || null,
-        salary_period: exp.noticePeriod,
-        is_current: !exp.endDate || exp.endDate === "",
-        current_wages: exp.currentWages ? Number(exp.currentWages) : null,
-        current_city: exp.currentCity,
-        current_village: exp.currentVillage === "Other" ? exp.currentVillageOther : exp.currentVillage,
-      })),
-      education: educationList.map((edu) => ({
-        degree: edu.degree,
-        university: edu.university,
-        passing_year: edu.passingYear,
-      })),
-      skills: skillsList.map((skill) => ({
-        skill_name: skill.name,
-        years_of_experience: skill.years || "0",
-        level: skill.level,
-      })),
+      work_experience: experiences
+        .filter((exp) => exp.position.trim() !== "" || exp.company.trim() !== "")
+        .map((exp) => ({
+          position: exp.position,
+          company: exp.company,
+          start_date: exp.startDate,
+          end_date: exp.endDate || null,
+          salary_period: exp.noticePeriod,
+          is_current: !exp.endDate || exp.endDate === "",
+          current_wages: exp.currentWages ? Number(exp.currentWages) : null,
+          current_city: exp.currentCity,
+          current_village: exp.currentVillage === "Other" ? exp.currentVillageOther : exp.currentVillage,
+        })),
+      education: educationList
+        .filter((edu) => edu.degree.trim() !== "" || edu.university.trim() !== "")
+        .map((edu) => ({
+          degree: edu.degree,
+          university: edu.university,
+          passing_year: edu.passingYear,
+        })),
+      skills: skillsList
+        .filter((skill) => skill.name.trim() !== "")
+        .map((skill) => ({
+          skill_name: skill.name,
+          years_of_experience: skill.years || "0",
+          level: skill.level,
+        })),
       languages_known: form.languagesKnown,
-      certifications: certificationList.map((cert) => ({
-        name: cert.name,
-        year: cert.year,
-        achievement: cert.achievement,
-      })),
+      certifications: certificationList
+        .filter((cert) => cert.name.trim() !== "")
+        .map((cert) => ({
+          name: cert.name,
+          year: cert.year,
+          achievement: cert.achievement,
+        })),
     };
 
     const BACKEND_URL = process.env.NEXT_PUBLIC_BACKEND_API_URL;
