@@ -467,7 +467,7 @@ const ResumePage = () => {
       mobile_number: form.phone.replace(/\D/g, "").slice(-10),
       gender: form.gender,
       marital_status: form.maritalStatus,
-      alternate_mobile_number: form.alternateMobile?.replace(/\D/g, "") || null,
+      alternate_mobile_number: form.alternateMobile?.replace(/\D/g, "") || "",
       date_of_birth: form.dob,
       address: form.address,
       state: form.state,
