@@ -484,14 +484,12 @@ const ResumePage = () => {
       job_category: form.availabilityJobCategory,
       current_location: `${form.availabilityCity}, ${form.availabilityState}`,
       availability_start: form.joiningDate,
-      preferred_shift: form.availabilityCategory, // Assuming availabilityCategory maps to shift or availability? Wait, form.availabilityCategory is "Full Time", etc?
-      // Actually checking form: availabilityCategory is likely interview availability?
-      // In form: interview_availability: form.availabilityCategory
-      // Let's check initialForm again.
-      // Re-reading page.tsx mapping:
-      // interview_availability: form.availabilityCategory,
-      // OK. User said "joining date not coming".
-      // joiningDate likely maps to availability_start.
+      interview_availability: form.availabilityCategory,
+      preferred_shift: form.availabilityCategory, // Mapping to both for now to be safe
+      pref_state: form.availabilityState,
+      pref_district: form.availabilityDistrict,
+      pref_city: form.availabilityCity,
+      pref_village: form.availabilityVillage === "Other" ? form.availabilityOtherVillage : form.availabilityVillage,
 
       summary: form.summary,
       additional_info: form.additionalInfo,
@@ -532,10 +530,6 @@ const ResumePage = () => {
           year: cert.year,
           achievement: cert.achievement,
         })),
-      pref_state: form.availabilityState,
-      pref_district: form.availabilityDistrict,
-      pref_city: form.availabilityCity,
-      pref_village: form.availabilityVillage === "Other" ? form.availabilityOtherVillage : form.availabilityVillage,
     };
 
     const BACKEND_URL = process.env.NEXT_PUBLIC_BACKEND_API_URL;
