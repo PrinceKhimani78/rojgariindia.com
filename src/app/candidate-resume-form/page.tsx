@@ -532,6 +532,10 @@ const ResumePage = () => {
           year: cert.year,
           achievement: cert.achievement,
         })),
+      pref_state: form.availabilityState,
+      pref_district: form.availabilityDistrict,
+      pref_city: form.availabilityCity,
+      pref_village: form.availabilityVillage === "Other" ? form.availabilityOtherVillage : form.availabilityVillage,
     };
 
     const BACKEND_URL = process.env.NEXT_PUBLIC_BACKEND_API_URL;
