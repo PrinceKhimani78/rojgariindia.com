@@ -353,6 +353,10 @@ const ResumePage = () => {
     // ------------------------------
     // DEFAULT NORMAL FIELD UPDATE
     // ------------------------------
+    if (name === "expectedSalary" || name === "totalExperience" || name === "pincode") {
+      value = value.replace(/\D/g, "");
+    }
+
     setForm((prev) => ({ ...prev, [name]: value }));
 
     // ------------------------------
@@ -477,9 +481,9 @@ const ResumePage = () => {
       country: "India",
       experienced: workType === "experienced",
       fresher: workType === "fresher",
-      expected_salary: `${form.expectedSalaryMin} - ${form.expectedSalaryMax}`,
-      expected_salary_min: form.expectedSalaryMin ? Number(form.expectedSalaryMin) : null,
-      expected_salary_max: form.expectedSalaryMax ? Number(form.expectedSalaryMax) : null,
+      expected_salary: form.expectedSalary,
+      expected_salary_min: form.expectedSalary ? Number(form.expectedSalary) : null,
+      expected_salary_max: form.expectedSalary ? Number(form.expectedSalary) : null,
       total_experience_years: form.totalExperience ? Number(form.totalExperience) : null,
       job_category: form.availabilityJobCategory,
       current_location: `${form.availabilityCity}, ${form.availabilityState}`,
@@ -1064,22 +1068,16 @@ const ResumePage = () => {
                       error={errors[`company-${index}`]}
                       required
                     />
-                    <InputBox
-                      label="Notice Period (Days)"
-                      name={`noticePeriod-${index}`}
-                      value={exp.noticePeriod}
-                      onChange={handleChange}
-                      error={errors[`noticePeriod-${index}`]}
-                    />
+                    {index === 0 && (
+                      <InputBox
+                        label="Notice Period (Days)"
+                        name={`noticePeriod-${index}`}
+                        value={exp.noticePeriod}
+                        onChange={handleChange}
+                        error={errors[`noticePeriod-${index}`]}
+                      />
+                    )}
 
-                    <InputBox
-                      label="Current Salary (₹)"
-                      name={`currentWages-${index}`}
-                      value={exp.currentWages || ""}
-                      onChange={handleChange}
-                      error={errors[`currentWages-${index}`]}
-                      required
-                    />
                     <SearchableSelectBox
                       label="Current City"
                       name={`currentCity-${index}`}
@@ -1127,14 +1125,34 @@ const ResumePage = () => {
                       error={errors[`endDate-${index}`]}
                     />
 
-                    <InputBox
-                      label="Experience (in Years)"
-                      name="totalExperience"
-                      value={form.totalExperience}
-                      onChange={handleChange}
-                      error={errors.totalExperience}
-                      required
-                    />
+                    {index === 0 && (
+                      <>
+                        <InputBox
+                          label="Current Salary (₹)"
+                          name={`currentWages-${index}`}
+                          value={exp.currentWages || ""}
+                          onChange={handleChange}
+                          error={errors[`currentWages-${index}`]}
+                          required
+                        />
+                        <InputBox
+                          label="Expected Salary (₹)"
+                          name="expectedSalary"
+                          value={form.expectedSalary || ""}
+                          onChange={handleChange}
+                          error={errors.expectedSalary}
+                          required
+                        />
+                        <InputBox
+                          label="Experience (in Years)"
+                          name="totalExperience"
+                          value={form.totalExperience}
+                          onChange={handleChange}
+                          error={errors.totalExperience}
+                          required
+                        />
+                      </>
+                    )}
                   </div>
 
                   {index === experiences.length - 1 && (
@@ -1181,7 +1199,7 @@ const ResumePage = () => {
                               },
                             ])
                           }
-                          className="w-10 h-10 text-2xl font-bold rounded-xl text-[#72B76A] border-2 border-[#72B76A] hover:bg-[#72B76A] hover:text-white transition-colors flex items-center justify-center"
+                          className="w-7 h-7 text-xl font-bold rounded-md text-[#72B76A] border border-[#72B76A] flex items-center justify-center transition-colors hover:bg-[#72B76A] hover:text-white"
                         >
                           +
                         </button>
@@ -1192,9 +1210,9 @@ const ResumePage = () => {
                           onClick={() =>
                             setExperiences((p) => p.filter((_, i) => i !== p.length - 1))
                           }
-                          className={`w-10 h-10 text-2xl font-bold rounded-xl flex items-center justify-center transition-colors ${experiences.length === 1
-                            ? "text-gray-300 border-2 border-gray-200 cursor-not-allowed"
-                            : "text-white bg-[#72B76A]"
+                          className={`w-7 h-7 text-xl font-bold rounded-md flex items-center justify-center transition-colors ${experiences.length === 1
+                            ? "text-[#A6D8A3] border border-[#A6D8A3] cursor-not-allowed"
+                            : "bg-[#72B76A] text-white"
                             }`}
                         >
                           –
@@ -1224,17 +1242,7 @@ const ResumePage = () => {
                     label="Degree"
                     name={`degree-${index}`}
                     value={edu.degree}
-                    onChange={(e) => {
-                      const val = e.target.value;
-                      const updated = [...educationList];
-                      updated[index].degree = val;
-                      setEducationList(updated);
-                      setTouched((t) => ({
-                        ...t,
-                        [`degree-${index}`]: true,
-                      }));
-                      scheduleValidate(`degree-${index}`, val);
-                    }}
+                    onChange={handleChange}
                     error={errors[`degree-${index}`]}
                     required
                   />
@@ -1243,17 +1251,7 @@ const ResumePage = () => {
                     label="University"
                     name={`university-${index}`}
                     value={edu.university}
-                    onChange={(e) => {
-                      const val = e.target.value;
-                      const updated = [...educationList];
-                      updated[index].university = val;
-                      setEducationList(updated);
-                      setTouched((t) => ({
-                        ...t,
-                        [`university-${index}`]: true,
-                      }));
-                      scheduleValidate(`university-${index}`, val);
-                    }}
+                    onChange={handleChange}
                     error={errors[`university-${index}`]}
                     required
                   />
@@ -1262,17 +1260,7 @@ const ResumePage = () => {
                     label="Passing Year"
                     name={`passingYear-${index}`}
                     value={edu.passingYear}
-                    onChange={(e) => {
-                      const val = e.target.value;
-                      const updated = [...educationList];
-                      updated[index].passingYear = val;
-                      setEducationList(updated);
-                      setTouched((t) => ({
-                        ...t,
-                        [`passingYear-${index}`]: true,
-                      }));
-                      scheduleValidate(`passingYear-${index}`, val);
-                    }}
+                    onChange={handleChange}
                     error={errors[`passingYear-${index}`]}
                     required
                   />
@@ -1669,23 +1657,17 @@ const ResumePage = () => {
                 required
               />
 
-              <InputBox
-                label="Expected Min Salary (₹)"
-                name="expectedSalaryMin"
-                value={form.expectedSalaryMin || ""}
-                onChange={handleChange}
-                error={errors.expectedSalaryMin}
-                required
-              />
+              {workType === "fresher" && (
+                <InputBox
+                  label="Expected Salary (₹)"
+                  name="expectedSalary"
+                  value={form.expectedSalary || ""}
+                  onChange={handleChange}
+                  error={errors.expectedSalary}
+                  required
+                />
+              )}
 
-              <InputBox
-                label="Expected Max Salary (₹)"
-                name="expectedSalaryMax"
-                value={form.expectedSalaryMax || ""}
-                onChange={handleChange}
-                error={errors.expectedSalaryMax}
-                required
-              />
             </div>
           </div>
 
@@ -1727,8 +1709,8 @@ const ResumePage = () => {
             )}
           </button>
         </form>
-      </div>
-    </div>
+      </div >
+    </div >
   );
 };
 
