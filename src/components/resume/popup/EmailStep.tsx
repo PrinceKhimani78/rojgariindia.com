@@ -7,7 +7,7 @@ const EmailStep = ({ email, setEmail, loading, onNext }) => {
     <div>
       <div className="flex items-center gap-2 mb-2">
         <span className="text-gray-700 text-sm font-medium">Email Address</span>
-        <FiMail size={18} className="text-gray-700" />
+        <FiMail size={14} className="text-gray-700" />
       </div>
 
       <input
