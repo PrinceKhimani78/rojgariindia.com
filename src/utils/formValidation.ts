@@ -24,14 +24,13 @@ export const initialForm = {
   address: "",
   summary: "",
   availabilityCategory: "",
+  availabilityIndustry: "",
+  availabilityJobCategory: "",
   availabilityState: "",
   availabilityDistrict: "",
-  availabilityCity: "",
+  availabilityCity: [] as string[],
   availabilityVillage: "",
   availabilityOtherVillage: "",
-
-  joiningDate: "",
-  availabilityJobCategory: "",
   expectedSalary: "",
   totalExperience: "",
   pincode: "",
@@ -59,7 +58,7 @@ export const normalizeIndianPhone = (input: string) => {
 export function validateField(
   name: string,
   value: unknown,
-  workType: "experienced" | "fresher"
+  workType: "experienced" | "fresher",
 ): string | null {
   try {
     // ARRAY FIELDS LIKE: fieldName-0 or prefix-fieldName-0
@@ -77,7 +76,11 @@ export function validateField(
       if (!fieldSchema) return null;
 
       // Conditional: don't validate hidden groups
-      if (workType === "fresher" && !prefix && (experienceSchema as any).shape[field])
+      if (
+        workType === "fresher" &&
+        !prefix &&
+        (experienceSchema as any).shape[field]
+      )
         return null;
 
       z.object({ [field]: fieldSchema }).parse({ [field]: value });
@@ -94,14 +97,14 @@ export function validateField(
         .string()
         .refine(
           (val) => /^(\+91)\s?[6-9]\d{9}$/.test(val),
-          "Enter a valid Indian mobile number"
+          "Enter a valid Indian mobile number",
         ),
       alternateMobile: z
         .string()
         .optional()
         .refine(
           (val) => !val || /^(\+91)\s?[6-9]\d{9}$/.test(val),
-          "Enter a valid Indian mobile number"
+          "Enter a valid Indian mobile number",
         ),
       dob: z.string().min(1, "Date of birth required"),
       gender: z.string().min(1, "Gender required"),
@@ -115,15 +118,20 @@ export function validateField(
       availabilityCategory: z.string().min(1, "Category required"),
       availabilityState: z.string().min(1, "State required"),
       availabilityDistrict: z.string().min(1, "District required"),
-      availabilityCity: z.string().min(1, "City required"),
+      availabilityCity: z
+        .array(z.string())
+        .nonempty("Select at least one city"),
       availabilityVillage: z.string().min(1, "Village required"),
       joiningDate: z.string().min(1, "Joining date required"),
       availabilityJobCategory: z.string().min(1, "Job category required"),
       expectedSalary: z.string().min(1, "Expected salary required"),
       totalExperience: z.string().optional(),
-      pincode: z.string().length(6, "PIN CODE must be 6 digits").regex(/^\d+$/, "PIN CODE must contain only numbers"),
+      pincode: z
+        .string()
+        .length(6, "PIN CODE must be 6 digits")
+        .regex(/^\d+$/, "PIN CODE must contain only numbers"),
       additionalInfo: z.string().optional(),
-      languagesKnown: z.array(z.string()).min(1, "Select at least one language"),
+      languagesKnown: z.array(z.string()).optional(),
       declarationChecked: z.boolean().refine((val) => val === true, {
         message: "You must certify that the information is true",
       }),
@@ -157,7 +165,7 @@ export function validateField(
 export function validateExperienceDates(
   _index: number,
   startDate: string,
-  endDate: string
+  endDate: string,
 ): string | null {
   if (!startDate || !endDate) return null;
 
@@ -212,6 +220,33 @@ export function validateForm(payload: unknown) {
     const key = String(path[0]);
     mapped[key] = err.message;
   });
+
+  const data = payload as any;
+
+  // Personal Village
+  if (data.village === "Other (Type Manually)" && !data.otherVillage?.trim()) {
+    mapped.otherVillage = "Village name is required";
+  }
+
+  // Availability Village
+  if (
+    data.availabilityVillage === "Other (Type Manually)" &&
+    !data.availabilityOtherVillage?.trim()
+  ) {
+    mapped.availabilityOtherVillage = "Village name is required";
+  }
+
+  // Experience Village
+  if (Array.isArray(data.experiences)) {
+    data.experiences.forEach((exp: any, index: number) => {
+      if (
+        exp.currentVillage === "Other (Type Manually)" &&
+        !exp.currentVillageOther?.trim()
+      ) {
+        mapped[`currentVillageOther-${index}`] = "Village name is required";
+      }
+    });
+  }
 
   return { isValid: false, errors: mapped };
 }

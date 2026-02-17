@@ -41,16 +41,87 @@ type IndiaJson = {
     };
   };
 };
+const INDUSTRY_OPTIONS = [
+  "Healthcare",
+  "Information Technology",
+  "Software Development",
+  "Construction",
+  "Education",
+  "Finance & Accounting",
+  "Sales & Marketing",
+  "Manufacturing",
+  "Retail",
+  "Logistics",
+  "Hospitality",
+  "Engineering",
+  "Government",
+  "Legal",
+  "Freelancer",
+  "Other",
+];
+
+const INDUSTRY_JOB_MAP: Record<string, string[]> = {
+  "Information Technology": [
+    "Frontend Developer",
+    "Backend Developer",
+    "Full Stack Developer",
+    "UI/UX Designer",
+    "QA Engineer",
+  ],
+  Healthcare: ["Doctor", "Nurse", "Pharmacist"],
+  Education: ["Teacher", "Professor", "Tutor"],
+  "Finance & Accounting": ["Accountant", "Auditor", "Tax Consultant"],
+  "Sales & Marketing": ["Sales Executive", "Marketing Manager"],
+  Manufacturing: ["Production Supervisor", "Machine Operator"],
+  Construction: ["Site Engineer", "Civil Engineer"],
+  Retail: ["Store Manager", "Sales Associate"],
+  Logistics: ["Warehouse Manager", "Delivery Executive"],
+  Hospitality: ["Hotel Manager", "Chef"],
+  Engineering: ["Mechanical Engineer", "Electrical Engineer"],
+  Government: ["Clerk", "Officer"],
+  Legal: ["Lawyer", "Legal Advisor"],
+  Freelancer: ["Freelancer"],
+  Other: ["Other"],
+};
 
 const INDIAN_LANGUAGES = [
-  "Hindi", "English", "Bengali", "Marathi", "Telugu", "Tamil", "Gujarati", "Urdu", "Kannada", "Odia",
-  "Malayalam", "Punjabi", "Sanskrit", "Assamese", "Maithili", "Santali", "Kashmiri", "Nepali", "Gondi",
-  "Sindhi", "Konkani", "Dogri", "Manipuri", "Khasi", "Bodo", "Garo", "Mizo", "Ho", "Kui", "Mundari", "Tripuri"
+  "Hindi",
+  "English",
+  "Bengali",
+  "Marathi",
+  "Telugu",
+  "Tamil",
+  "Gujarati",
+  "Urdu",
+  "Kannada",
+  "Odia",
+  "Malayalam",
+  "Punjabi",
+  "Sanskrit",
+  "Assamese",
+  "Maithili",
+  "Santali",
+  "Kashmiri",
+  "Nepali",
+  "Gondi",
+  "Sindhi",
+  "Konkani",
+  "Dogri",
+  "Manipuri",
+  "Khasi",
+  "Bodo",
+  "Garo",
+  "Mizo",
+  "Ho",
+  "Kui",
+  "Mundari",
+  "Tripuri",
 ];
 
 type WorkType = "experienced" | "fresher";
 
 type ExperienceEntry = {
+  industry: string;
   position: string;
   company: string;
   noticePeriod: string;
@@ -93,9 +164,12 @@ const ResumePage = () => {
   >({});
 
   const [form, setForm] = useState(initialForm);
-
-  const [experiences, setExperiences] = useState<ExperienceEntry[]>([
+  // experience
+  const [experiencesExperienced, setExperiencesExperienced] = useState<
+    ExperienceEntry[]
+  >([
     {
+      industry: "",
       position: "",
       company: "",
       noticePeriod: "",
@@ -104,20 +178,28 @@ const ResumePage = () => {
     },
   ]);
 
-  const [educationList, setEducationList] = useState([
-    { degree: "", university: "", passingYear: "" },
+  const [educationExperienced, setEducationExperienced] = useState([
+    { degree: "", university: "", passingYear: "", grade: "" },
+  ]);
+  const [skillsExperienced, setSkillsExperienced] = useState([{ name: "" }]);
+  const [certificationsExperienced, setCertificationsExperienced] = useState<
+    CertificationEntry[]
+  >([{ name: "", year: "", achievement: "" }]);
+
+  // freshers
+  const [educationFresher, setEducationFresher] = useState([
+    { degree: "", university: "", passingYear: "", grade: "" },
   ]);
 
-  const [certificationList, setCertificationList] = useState<CertificationEntry[]>([
-    { name: "", year: "", achievement: "" },
-  ]);
+  const [skillsFresher, setSkillsFresher] = useState([{ name: "" }]);
+
+  const [certificationsFresher, setCertificationsFresher] = useState<
+    CertificationEntry[]
+  >([{ name: "", year: "", achievement: "" }]);
 
   // Default years to "0" since we removed the input but schema might check min length?
   // We updated schema to optional? No.
   // We'll set it to "0" to pass "min(1)" check.
-  const [skillsList, setSkillsList] = useState([
-    { name: "", level: "", years: "0" },
-  ]);
 
   const [photoPreview, setPhotoPreview] = useState<string | null>(null);
   const [photoFile, setPhotoFile] = useState<File | null>(null); // Store the actual file
@@ -170,7 +252,14 @@ const ResumePage = () => {
       | React.ChangeEvent<HTMLInputElement>
       | React.ChangeEvent<HTMLTextAreaElement>
       | React.ChangeEvent<HTMLSelectElement>
-      | { target: { name: string; value: any; type?: string; checked?: boolean } }
+      | {
+          target: {
+            name: string;
+            value: any;
+            type?: string;
+            checked?: boolean;
+          };
+        },
   ) => {
     let { name, value } = e.target;
 
@@ -205,22 +294,29 @@ const ResumePage = () => {
       }
 
       // EXPERIENCE FIELDS
-      if (!prefix && experienceSchema.shape[fieldName]) {
+      if (
+        !prefix &&
+        (fieldName === "industry" || experienceSchema.shape[fieldName])
+      ) {
         setExperiences((prev) =>
           prev.map((item, i) =>
-            i === index ? { ...item, [fieldName]: value } : item
-          )
+            i === index ? { ...item, [fieldName]: value } : item,
+          ),
         );
+
         scheduleValidate(name, value);
         return;
       }
 
       // EDUCATION FIELDS
-      if (!prefix && educationSchema.shape[fieldName]) {
+      if (
+        !prefix &&
+        ["degree", "university", "passingYear", "grade"].includes(fieldName)
+      ) {
         setEducationList((prev) =>
           prev.map((item, i) =>
-            i === index ? { ...item, [fieldName]: value } : item
-          )
+            i === index ? { ...item, [fieldName]: value } : item,
+          ),
         );
         scheduleValidate(name, value);
         return;
@@ -230,8 +326,8 @@ const ResumePage = () => {
       if (prefix === "skill" && skillSchema.shape[fieldName]) {
         setSkillsList((prev) =>
           prev.map((item, i) =>
-            i === index ? { ...item, [fieldName]: value } : item
-          )
+            i === index ? { ...item, [fieldName]: value } : item,
+          ),
         );
         scheduleValidate(name, value);
         return;
@@ -241,8 +337,8 @@ const ResumePage = () => {
       if (prefix === "cert" && certificationSchema.shape[fieldName]) {
         setCertificationList((prev) =>
           prev.map((item, i) =>
-            i === index ? { ...item, [fieldName]: value } : item
-          )
+            i === index ? { ...item, [fieldName]: value } : item,
+          ),
         );
         scheduleValidate(name, value);
         return;
@@ -292,8 +388,7 @@ const ResumePage = () => {
         availabilityState: value,
         availabilityDistrict:
           value === f.availabilityState ? f.availabilityDistrict : "",
-        availabilityCity: "",
-        availabilityVillage: "",
+        availabilityCity: [],
       }));
       scheduleValidate("availabilityState", value);
       return;
@@ -304,8 +399,7 @@ const ResumePage = () => {
         ...f,
         availabilityDistrict: value,
         availabilityCity:
-          value === f.availabilityDistrict ? f.availabilityCity : "",
-        availabilityVillage: "",
+          value === f.availabilityDistrict ? f.availabilityCity : [],
       }));
       scheduleValidate("availabilityDistrict", value);
       return;
@@ -353,7 +447,11 @@ const ResumePage = () => {
     // ------------------------------
     // DEFAULT NORMAL FIELD UPDATE
     // ------------------------------
-    if (name === "expectedSalary" || name === "totalExperience" || name === "pincode") {
+    if (
+      name === "expectedSalary" ||
+      name === "totalExperience" ||
+      name === "pincode"
+    ) {
       value = value.replace(/\D/g, "");
     }
 
@@ -424,7 +522,7 @@ const ResumePage = () => {
       reader.readAsDataURL(file);
       // Photo prepared for preview/upload
     },
-    []
+    [],
   );
   // validateField and validateForm moved to utils. We'll call them and
   // set/clear errors here to keep component state local.
@@ -432,6 +530,7 @@ const ResumePage = () => {
   // validateForm moved to utils; call validateFormUtil(payload) below in submit
 
   const handleSubmit = async (e: React.FormEvent) => {
+    console.log("FORM SUBMIT TRIGGERED");
     e.preventDefault();
     // mark that user has attempted to submit - show all validation errors
     setFormSubmitted(true);
@@ -482,60 +581,99 @@ const ResumePage = () => {
       experienced: workType === "experienced",
       fresher: workType === "fresher",
       expected_salary: form.expectedSalary,
-      expected_salary_min: form.expectedSalary ? Number(form.expectedSalary) : null,
-      expected_salary_max: form.expectedSalary ? Number(form.expectedSalary) : null,
-      total_experience_years: form.totalExperience ? Number(form.totalExperience) : null,
+      expected_salary_min: form.expectedSalary
+        ? Number(form.expectedSalary)
+        : null,
+      expected_salary_max: form.expectedSalary
+        ? Number(form.expectedSalary)
+        : null,
+      total_experience_years: form.totalExperience
+        ? Number(form.totalExperience)
+        : null,
       job_category: form.availabilityJobCategory,
       current_location: `${form.availabilityCity}, ${form.availabilityState}`,
-      availability_start: form.joiningDate,
+
       interview_availability: form.availabilityCategory,
       preferred_shift: form.availabilityCategory, // Mapping to both for now to be safe
       pref_state: form.availabilityState,
       pref_district: form.availabilityDistrict,
-      pref_city: form.availabilityCity,
-      pref_village: form.availabilityVillage === "Other" ? form.availabilityOtherVillage : form.availabilityVillage,
+      pref_city: form.availabilityCity.join(", "),
+      pref_village:
+        form.availabilityVillage === "Other"
+          ? form.availabilityOtherVillage
+          : form.availabilityVillage,
 
       summary: form.summary,
       additional_info: form.additionalInfo,
       pincode: form.pincode,
 
-      work_experience: experiences
-        .filter((exp) => exp.position.trim() !== "" || exp.company.trim() !== "")
-        .map((exp) => ({
-          position: exp.position,
-          company: exp.company,
-          start_date: exp.startDate,
-          end_date: exp.endDate || null,
-          salary_period: exp.noticePeriod,
-          is_current: !exp.endDate || exp.endDate === "",
-          current_wages: exp.currentWages ? Number(exp.currentWages) : null,
-          current_city: exp.currentCity,
-          current_village: exp.currentVillage === "Other" ? exp.currentVillageOther : exp.currentVillage,
-        })),
-      education: educationList
-        .filter((edu) => edu.degree.trim() !== "" || edu.university.trim() !== "")
-        .map((edu) => ({
-          degree: edu.degree,
-          university: edu.university,
-          passing_year: edu.passingYear,
-        })),
-      skills: skillsList
-        .filter((skill) => skill.name.trim() !== "")
-        .map((skill) => ({
-          skill_name: skill.name,
-          years_of_experience: skill.years || "0",
-          level: skill.level,
-        })),
-      languages_known: form.languagesKnown,
-      certifications: certificationList
-        .filter((cert) => cert.name.trim() !== "")
-        .map((cert) => ({
-          name: cert.name,
-          year: cert.year,
-          achievement: cert.achievement,
-        })),
-    };
+      work_experience:
+        workType === "experienced"
+          ? experiencesExperienced
+          : []
+              .filter(
+                (exp) =>
+                  exp.position.trim() !== "" || exp.company.trim() !== "",
+              )
+              .map((exp) => ({
+                industry: exp.industry,
 
+                position: exp.position,
+                company: exp.company,
+                start_date: exp.startDate,
+                end_date: exp.endDate || null,
+                salary_period: exp.noticePeriod,
+                is_current: !exp.endDate || exp.endDate === "",
+                current_wages: exp.currentWages
+                  ? Number(exp.currentWages)
+                  : null,
+                current_city: exp.currentCity,
+                current_village:
+                  exp.currentVillage === "Other (Type Manually)"
+                    ? exp.currentVillageOther
+                    : exp.currentVillage,
+              })),
+      education:
+        workType === "experienced"
+          ? educationExperienced.map((edu) => ({
+              degree: edu.degree,
+              university: edu.university,
+              passing_year: edu.passingYear,
+              grade: edu.grade,
+            }))
+          : educationFresher
+              .filter(
+                (edu) =>
+                  edu.degree.trim() !== "" || edu.university.trim() !== "",
+              )
+              .map((edu) => ({
+                degree: edu.degree,
+                university: edu.university,
+                passing_year: edu.passingYear,
+                grade: edu.grade,
+              })),
+
+      skills:
+        workType === "experienced"
+          ? skillsExperienced
+          : skillsFresher
+              .filter((skill) => skill.name.trim() !== "")
+              .map((skill) => ({
+                skill_name: skill.name,
+              })),
+      languages_known: form.languagesKnown,
+      certifications:
+        workType === "experienced"
+          ? certificationsExperienced
+          : certificationsFresher
+              .filter((cert) => cert.name.trim() !== "")
+              .map((cert) => ({
+                name: cert.name,
+                year: cert.year,
+                achievement: cert.achievement,
+              })),
+    };
+    console.log("Education being sent:", apiPayload.education);
     const BACKEND_URL = process.env.NEXT_PUBLIC_BACKEND_API_URL;
     setLoading(true);
     try {
@@ -567,7 +705,7 @@ const ResumePage = () => {
         } else {
           showSnackbar(
             data.message || UI_MESSAGES.SOMETHING_WENT_WRONG,
-            "error"
+            "error",
           );
         }
         setDuplicateError(data.message || UI_MESSAGES.SOMETHING_WENT_WRONG);
@@ -588,7 +726,7 @@ const ResumePage = () => {
             {
               method: "POST",
               body: photoFormData,
-            }
+            },
           );
 
           if (uploadRes.ok) {
@@ -598,17 +736,17 @@ const ResumePage = () => {
             if (uploadRes.status === 409) {
               showSnackbar(
                 errorData.message || UI_MESSAGES.PHOTO_UPLOAD_CONFLICT,
-                "error"
+                "error",
               );
             } else if (uploadRes.status === 500) {
               showSnackbar(
                 errorData.message || UI_MESSAGES.PHOTO_UPLOAD_SERVER_ERROR,
-                "error"
+                "error",
               );
             } else {
               showSnackbar(
                 errorData.message || UI_MESSAGES.PHOTO_UPLOAD_FAILED,
-                "error"
+                "error",
               );
             }
           }
@@ -623,7 +761,7 @@ const ResumePage = () => {
       setDuplicateError("");
       showSnackbar(
         UI_MESSAGES.PROFILE_CREATED_SUCCESS(form.firstName, form.surName),
-        "success"
+        "success",
       );
       // Reset form to initial state after successful creation
       setForm(initialForm);
@@ -632,6 +770,7 @@ const ResumePage = () => {
       setCertificationList([{ name: "", year: "", achievement: "" }]);
       setExperiences([
         {
+          industry: "",
           position: "",
           company: "",
           noticePeriod: "",
@@ -643,8 +782,10 @@ const ResumePage = () => {
           currentVillageOther: "",
         },
       ]);
-      setEducationList([{ degree: "", university: "", passingYear: "" }]);
-      setSkillsList([{ name: "", level: "", years: "" }]);
+      setEducationList([
+        { degree: "", university: "", passingYear: "", grade: "" },
+      ]);
+      setSkillsList([{ name: "" }]);
       setPhotoPreview(null);
       setPhotoFile(null);
       setErrors({});
@@ -677,25 +818,51 @@ const ResumePage = () => {
       : [];
   const availabilityCityOptions =
     indiaData &&
-      form.availabilityState &&
-      form.availabilityDistrict &&
-      indiaData[form.availabilityState][form.availabilityDistrict]
+    form.availabilityState &&
+    form.availabilityDistrict &&
+    indiaData[form.availabilityState][form.availabilityDistrict]
       ? Object.keys(
-        indiaData[form.availabilityState][form.availabilityDistrict]
-      )
+          indiaData[form.availabilityState][form.availabilityDistrict],
+        )
       : [];
-  const availabilityVillageOptions =
-    indiaData &&
-      form.availabilityState &&
-      form.availabilityDistrict &&
-      form.availabilityCity
-      ? indiaData[form.availabilityState][form.availabilityDistrict][
-      form.availabilityCity
-      ]
-      : [];
+  // const availabilityVillageOptions =
+  //   indiaData &&
+  //   form.availabilityState &&
+  //   form.availabilityDistrict &&
+  //   form.availabilityCity
+  //     ? indiaData[form.availabilityState][form.availabilityDistrict][
+  //         form.availabilityCity
+  //       ]
+  //     : [];
 
   if (!isClient) return null;
   // console.log("CURRENT ERRORS --->", errors);
+  const experiences = workType === "experienced" ? experiencesExperienced : [];
+
+  const setExperiences =
+    workType === "experienced" ? setExperiencesExperienced : () => {};
+  const educationList =
+    workType === "experienced" ? educationExperienced : educationFresher;
+
+  const setEducationList =
+    workType === "experienced" ? setEducationExperienced : setEducationFresher;
+  const skillsList =
+    workType === "experienced" ? skillsExperienced : skillsFresher;
+
+  const setSkillsList =
+    workType === "experienced" ? setSkillsExperienced : setSkillsFresher;
+
+  const certificationList =
+    workType === "experienced"
+      ? certificationsExperienced
+      : certificationsFresher;
+
+  const setCertificationList =
+    workType === "experienced"
+      ? setCertificationsExperienced
+      : setCertificationsFresher;
+
+  const jobCategoryOptions = INDUSTRY_JOB_MAP[form.availabilityIndustry] || [];
   return (
     <div className="relative min-h-screen w-full flex justify-center px-4 py-10 overflow-x-hidden">
       {loading && (
@@ -709,12 +876,12 @@ const ResumePage = () => {
       <Popup
         open={showPopup}
         onClose={() => setShowPopup(false)}
-      // onClose={() => {
-      //   if (popupStep === "email" && !form.email?.trim()) {
-      //     return;
-      //   }
-      //   setShowPopup(false);
-      // }}
+        // onClose={() => {
+        //   if (popupStep === "email" && !form.email?.trim()) {
+        //     return;
+        //   }
+        //   setShowPopup(false);
+        // }}
       >
         <div className="flex flex-col items-center gap-4 mb-4">
           <Image
@@ -785,8 +952,9 @@ const ResumePage = () => {
                 error={errors.surName}
                 required
               />
-
-              <label className={`w-full h-[45px] sm:h-auto bg-white/10 border ${errors.photo ? "border-red-500" : "border-gray-300"} rounded-xl flex items-center justify-center cursor-pointer text-gray-400 overflow-hidden row-span-1 md:row-span-3 relative`}>
+              <label
+                className={`w-full h-[45px] sm:h-auto bg-white/10 border ${errors.photo ? "border-red-500" : "border-gray-300"} rounded-xl flex items-center justify-center cursor-pointer text-gray-400 overflow-hidden row-span-1 md:row-span-3 relative`}
+              >
                 {photoPreview ? (
                   <Image
                     src={photoPreview}
@@ -796,7 +964,9 @@ const ResumePage = () => {
                     className="w-auto h-auto object-cover"
                   />
                 ) : (
-                  <span className={`text-m opacity-80 sm:text-left ${errors.photo ? "text-red-500" : ""}`}>
+                  <span
+                    className={`text-m opacity-80 sm:text-left ${errors.photo ? "text-red-500" : ""}`}
+                  >
                     {errors.photo ? "Photo Required" : "Upload Photo"}
                   </span>
                 )}
@@ -806,7 +976,7 @@ const ResumePage = () => {
                   onChange={(e) => {
                     handlePhoto(e);
                     if (e.target.files?.[0]) {
-                      setErrors(prev => {
+                      setErrors((prev) => {
                         const newErr = { ...prev };
                         delete newErr.photo;
                         return newErr;
@@ -816,7 +986,6 @@ const ResumePage = () => {
                   className="hidden"
                 />
               </label>
-
               <InputBox
                 label="Email"
                 name="email"
@@ -833,7 +1002,6 @@ const ResumePage = () => {
                 error={errors.phone}
                 required
               />
-
               {/* NEW PERSONAL FIELDS */}
               <InputBox
                 label="Alternate Mobile"
@@ -842,7 +1010,6 @@ const ResumePage = () => {
                 onChange={handleChange}
                 error={errors.alternateMobile}
               />
-
               <DatePicker
                 label="Date of Birth"
                 name="dob"
@@ -851,7 +1018,6 @@ const ResumePage = () => {
                 error={errors.dob}
                 required
               />
-
               <SearchableSelectBox
                 label="Gender"
                 name="gender"
@@ -861,7 +1027,6 @@ const ResumePage = () => {
                 error={errors.gender}
                 required
               />
-
               <SearchableSelectBox
                 label="Marital Status"
                 name="maritalStatus"
@@ -871,7 +1036,6 @@ const ResumePage = () => {
                 error={errors.maritalStatus}
                 required
               />
-
               <SearchableSelectBox
                 label="State"
                 name="state"
@@ -899,7 +1063,6 @@ const ResumePage = () => {
                 error={errors.city}
                 required
               />
-
               <SearchableSelectBox
                 label="Village"
                 name="village"
@@ -909,20 +1072,16 @@ const ResumePage = () => {
                 error={errors.village}
                 required
               />
-
               {form.village === "Other" && (
-                <div className="lg:col-span-1">
-                  <InputBox
-                    label="Enter Village Name"
-                    name="otherVillage"
-                    value={form.otherVillage || ""}
-                    onChange={handleChange}
-                    error={errors.otherVillage}
-                    required
-                  />
-                </div>
+                <InputBox
+                  label="Enter Village Name"
+                  name="otherVillage"
+                  value={form.otherVillage || ""}
+                  onChange={handleChange}
+                  error={errors.otherVillage}
+                  required
+                />
               )}
-
               <InputBox
                 label="Address"
                 name="address"
@@ -936,13 +1095,14 @@ const ResumePage = () => {
                 name="pincode"
                 value={form.pincode}
                 onChange={(e) => {
-                  e.target.value = e.target.value.replace(/\D/g, "").slice(0, 6);
+                  e.target.value = e.target.value
+                    .replace(/\D/g, "")
+                    .slice(0, 6);
                   handleChange(e);
                 }}
                 error={errors.pincode}
                 required
               />
-
               <MultiSelectBox
                 label="Languages Known"
                 name="languagesKnown"
@@ -950,7 +1110,6 @@ const ResumePage = () => {
                 options={INDIAN_LANGUAGES}
                 onChange={handleChange}
                 error={errors.languagesKnown}
-                required
               />
             </div>
             {/* duplicateError is shown via global toast; do not render inline */}
@@ -968,28 +1127,36 @@ const ResumePage = () => {
                 setExperiences((prev) =>
                   prev.length === 0
                     ? [
-                      {
-                        position: "",
-                        company: "",
-                        noticePeriod: "",
-                        startDate: "",
-                        endDate: "",
-                      },
-                    ]
-                    : prev
+                        {
+                          industry: "",
+                          position: "",
+                          company: "",
+                          noticePeriod: "",
+                          startDate: "",
+                          endDate: "",
+                          currentWages: "",
+                          currentCity: "",
+                          currentVillage: "",
+                          currentVillageOther: "",
+                        },
+                      ]
+                    : prev,
                 );
 
                 // Education is now required for both
                 if (educationList.length === 0) {
-                  setEducationList([{ degree: "", university: "", passingYear: "" }]);
+                  setEducationList([
+                    { degree: "", university: "", passingYear: "", grade: "" },
+                  ]);
                 }
               }}
               className={`
       w-full h-12 rounded-lg transition cursor-pointer
-      ${workType === "experienced"
-                  ? "bg-[#72B76A] text-white border border-[#72B76A]"
-                  : "bg-transparent text-[#72B76A] border border-[#72B76A]"
-                }
+      ${
+        workType === "experienced"
+          ? "bg-[#72B76A] text-white border border-[#72B76A]"
+          : "bg-transparent text-[#72B76A] border border-[#72B76A]"
+      }
     `}
             >
               Experienced
@@ -1003,7 +1170,9 @@ const ResumePage = () => {
 
                 // Education is required → ensure at least one row
                 if (educationList.length === 0) {
-                  setEducationList([{ degree: "", university: "", passingYear: "" }]);
+                  setEducationList([
+                    { degree: "", university: "", passingYear: "", grade: "" },
+                  ]);
                 }
 
                 // Clear experiences for fresher logic
@@ -1027,10 +1196,11 @@ const ResumePage = () => {
               }}
               className={`
       w-full h-12 rounded-lg transition cursor-pointer
-      ${workType === "fresher"
-                  ? "bg-[#72B76A] text-white border border-[#72B76A]"
-                  : "bg-transparent text-[#72B76A] border border-[#72B76A]"
-                }
+      ${
+        workType === "fresher"
+          ? "bg-[#72B76A] text-white border border-[#72B76A]"
+          : "bg-transparent text-[#72B76A] border border-[#72B76A]"
+      }
     `}
             >
               Fresher
@@ -1052,6 +1222,15 @@ const ResumePage = () => {
                   className="border border-gray-200 rounded-xl p-5 bg-white/70 space-y-4"
                 >
                   <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                    <SearchableSelectBox
+                      label="Industry"
+                      name={`industry-${index}`}
+                      value={exp.industry}
+                      options={INDUSTRY_OPTIONS}
+                      onChange={handleChange}
+                      error={errors[`industry-${index}`]}
+                      required
+                    />
                     <InputBox
                       label="Position"
                       name={`position-${index}`}
@@ -1079,7 +1258,7 @@ const ResumePage = () => {
                     )}
 
                     <SearchableSelectBox
-                      label="Current City"
+                      label="City"
                       name={`currentCity-${index}`}
                       value={exp.currentCity || ""}
                       options={cityOptions}
@@ -1088,7 +1267,7 @@ const ResumePage = () => {
                       required
                     />
                     <SearchableSelectBox
-                      label="Current Village"
+                      label=" Village"
                       name={`currentVillage-${index}`}
                       value={exp.currentVillage || ""}
                       options={[...villageOptions, "Other"]}
@@ -1181,7 +1360,11 @@ const ResumePage = () => {
                         >
                           Summary
                         </label>
-                        {errors.summary && <p className="text-red-500 text-xs mt-1">{errors.summary}</p>}
+                        {errors.summary && (
+                          <p className="text-red-500 text-xs mt-1">
+                            {errors.summary}
+                          </p>
+                        )}
                       </div>
 
                       <div className="flex gap-2">
@@ -1191,11 +1374,16 @@ const ResumePage = () => {
                             setExperiences((p) => [
                               ...p,
                               {
+                                industry: "",
                                 position: "",
                                 company: "",
                                 noticePeriod: "",
                                 startDate: "",
                                 endDate: "",
+                                currentWages: "",
+                                currentCity: "",
+                                currentVillage: "",
+                                currentVillageOther: "",
                               },
                             ])
                           }
@@ -1208,12 +1396,15 @@ const ResumePage = () => {
                           type="button"
                           disabled={experiences.length === 1}
                           onClick={() =>
-                            setExperiences((p) => p.filter((_, i) => i !== p.length - 1))
+                            setExperiences((p) =>
+                              p.filter((_, i) => i !== p.length - 1),
+                            )
                           }
-                          className={`w-7 h-7 text-xl font-bold rounded-md flex items-center justify-center transition-colors ${experiences.length === 1
-                            ? "text-[#A6D8A3] border border-[#A6D8A3] cursor-not-allowed"
-                            : "bg-[#72B76A] text-white"
-                            }`}
+                          className={`w-7 h-7 text-xl font-bold rounded-md border transition-colors ${
+                            experiences.length === 1
+                              ? "text-[#A6D8A3] border-[#A6D8A3] cursor-not-allowed"
+                              : "text-[#72B76A] border-[#72B76A] hover:bg-[#72B76A] hover:text-white"
+                          }`}
                         >
                           –
                         </button>
@@ -1222,11 +1413,9 @@ const ResumePage = () => {
                   )}
                 </div>
               ))}
-
             </div>
           )}
-
-          {/* Education Details - Common for both */}
+          {/* Education Details -   */}
           <div className="space-y-4">
             <h3 className="text-lg font-semibold text-gray-800">
               Education Details
@@ -1237,7 +1426,8 @@ const ResumePage = () => {
                 key={index}
                 className="border border-gray-200 rounded-xl p-5 bg-white/70 space-y-4"
               >
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  {/* Row 1 */}
                   <InputBox
                     label="Degree"
                     name={`degree-${index}`}
@@ -1247,6 +1437,15 @@ const ResumePage = () => {
                     required
                   />
 
+                  <InputBox
+                    label="Grade / Percentage"
+                    name={`grade-${index}`}
+                    value={edu.grade}
+                    onChange={handleChange}
+                    error={errors[`grade-${index}`]}
+                  />
+
+                  {/* Row 2 */}
                   <InputBox
                     label="University"
                     name={`university-${index}`}
@@ -1274,12 +1473,13 @@ const ResumePage = () => {
                         ...educationList,
                         {
                           degree: "",
+                          grade: "",
                           university: "",
                           passingYear: "",
                         },
                       ])
                     }
-                    className="w-7 h-7 text-xl font-bold rounded-md text-[#72B76A] border border-[#72B76A]"
+                    className="w-7 h-7 text-xl font-bold rounded-md text-[#72B76A] border border-[#72B76A] hover:bg-[#72B76A]  hover:text-white"
                   >
                     +
                   </button>
@@ -1289,13 +1489,14 @@ const ResumePage = () => {
                     disabled={educationList.length === 1}
                     onClick={() =>
                       setEducationList(
-                        educationList.filter((_, i) => i !== index)
+                        educationList.filter((_, i) => i !== index),
                       )
                     }
-                    className={`w-7 h-7 text-xl ${educationList.length === 1
-                      ? "text-[#A6D8A3] border border-[#A6D8A3]  font-bold rounded-md  cursor-not-allowed"
-                      : "bg-[#72B76A] text-white"
-                      }`}
+                    className={`w-7 h-7 text-xl font-bold rounded-md border transition-colors ${
+                      educationList.length === 1
+                        ? "text-[#A6D8A3] border-[#A6D8A3] cursor-not-allowed"
+                        : "text-[#72B76A] border-[#72B76A] hover:bg-[#72B76A] hover:text-white"
+                    }`}
                   >
                     –
                   </button>
@@ -1350,7 +1551,7 @@ const ResumePage = () => {
                         { name: "", year: "", achievement: "" },
                       ])
                     }
-                    className="w-7 h-7 text-xl font-bold rounded-md text-[#72B76A] border border-[#72B76A]"
+                    className="w-7 h-7 text-xl font-bold rounded-md text-[#72B76A] border border-[#72B76A] hover:bg-[#72B76A]  hover:text-white"
                   >
                     +
                   </button>
@@ -1358,12 +1559,15 @@ const ResumePage = () => {
                     type="button"
                     disabled={certificationList.length === 1}
                     onClick={() =>
-                      setCertificationList((p) => p.filter((_, i) => i !== index))
+                      setCertificationList((p) =>
+                        p.filter((_, i) => i !== index),
+                      )
                     }
-                    className={`w-7 h-7 text-xl font-bold rounded-md ${certificationList.length === 1
-                      ? "text-[#A6D8A3] border border-[#A6D8A3] font-bold rounded-md cursor-not-allowed"
-                      : "bg-[#72B76A] text-white"
-                      }`}
+                    className={`w-7 h-7 text-xl font-bold rounded-md border transition-colors ${
+                      certificationList.length === 1
+                        ? "text-[#A6D8A3] border-[#A6D8A3] cursor-not-allowed"
+                        : "text-[#72B76A] border-[#72B76A] hover:bg-[#72B76A] hover:text-white"
+                    }`}
                   >
                     –
                   </button>
@@ -1376,65 +1580,47 @@ const ResumePage = () => {
           <div className="space-y-4">
             <h3 className="text-lg font-semibold text-gray-800">Your Skills</h3>
 
-            {skillsList.map((skill, index) => (
-              <div
-                key={index}
-                className="border border-gray-200 rounded-xl p-5 bg-white/70 space-y-4"
-              >
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                  <InputBox
-                    label="Skill"
+            <div className="flex flex-wrap gap-3 items-center">
+              {skillsList.map((skill, index) => (
+                <div key={index} className="flex items-center gap-2">
+                  <input
+                    type="text"
                     name={`skill-name-${index}`}
                     value={skill.name}
                     onChange={handleChange}
-                    error={errors[`skill-name-${index}`]}
-                    required
+                    placeholder="Enter Skill"
+                    className={`px-4 py-2 rounded-lg border outline-none transition
+            ${errors[`skill-name-${index}`] ? "border-red-500" : "border-gray-300"}
+            focus:border-[#72B76A]`}
                   />
 
-                  <SelectBox
-                    label="Level"
-                    name={`skill-level-${index}`}
-                    value={skill.level}
-                    options={["Beginner", "Intermediate", "Expert"]}
-                    onChange={handleChange}
-                    error={errors[`skill-level-${index}`]}
-                    required
-                  />
-                  <div className="md:col-span-1 hidden">
-                    {/* Hidden years input to satisfy schema if needed, or just relying on default value "0" */}
-                  </div>
+                  {skillsList.length > 1 && (
+                    <button
+                      type="button"
+                      onClick={() =>
+                        setSkillsList(skillsList.filter((_, i) => i !== index))
+                      }
+                      className="w-7 h-7 text-lg font-bold rounded-md border
+              text-[#72B76A] border-[#72B76A]
+              hover:bg-[#72B76A] hover:text-white"
+                    >
+                      –
+                    </button>
+                  )}
                 </div>
+              ))}
 
-                <div className="flex gap-2">
-                  <button
-                    type="button"
-                    onClick={() =>
-                      setSkillsList([
-                        ...skillsList,
-                        { name: "", level: "", years: "0" },
-                      ])
-                    }
-                    className="w-7 h-7 text-xl font-bold rounded-md text-[#72B76A] border border-[#72B76A]"
-                  >
-                    +
-                  </button>
-
-                  <button
-                    type="button"
-                    disabled={skillsList.length === 1}
-                    onClick={() =>
-                      setSkillsList(skillsList.filter((_, i) => i !== index))
-                    }
-                    className={`w-7 h-7 text-xl ${skillsList.length === 1
-                      ? "text-[#A6D8A3] border border-[#A6D8A3] font-bold rounded-md cursor-not-allowed"
-                      : "bg-[#72B76A] text-white rounded-md"
-                      }`}
-                  >
-                    –
-                  </button>
-                </div>
-              </div>
-            ))}
+              {/* ADD BUTTON */}
+              <button
+                type="button"
+                onClick={() => setSkillsList([...skillsList, { name: "" }])}
+                className="w-7 h-7 text-lg font-bold rounded-md border
+        text-[#72B76A] border-[#72B76A]
+        hover:bg-[#72B76A] hover:text-white"
+              >
+                +
+              </button>
+            </div>
           </div>
 
           {/* Availability */}
@@ -1443,9 +1629,10 @@ const ResumePage = () => {
               Availability & Preferred Location
             </h3>
 
+            {/* Row 1 */}
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
               <SearchableSelectBox
-                label="Category"
+                label="Employment Type"
                 name="availabilityCategory"
                 value={form.availabilityCategory}
                 options={["Full-Time", "Part-Time", "Contract", "Internship"]}
@@ -1454,6 +1641,29 @@ const ResumePage = () => {
                 required
               />
 
+              <SearchableSelectBox
+                label="Industry"
+                name="availabilityIndustry"
+                value={form.availabilityIndustry}
+                options={INDUSTRY_OPTIONS}
+                onChange={handleChange}
+                error={errors.availabilityIndustry}
+                required
+              />
+
+              <SearchableSelectBox
+                label="Job Category"
+                name="availabilityJobCategory"
+                value={form.availabilityJobCategory}
+                options={jobCategoryOptions}
+                onChange={handleChange}
+                error={errors.availabilityJobCategory}
+                required
+              />
+            </div>
+
+            {/* Row 2 */}
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
               <SearchableSelectBox
                 label="State"
                 name="availabilityState"
@@ -1474,39 +1684,19 @@ const ResumePage = () => {
                 required
               />
 
-              <SearchableSelectBox
+              <MultiSelectBox
                 label="City"
                 name="availabilityCity"
-                value={form.availabilityCity}
+                value={form.availabilityCity || []}
                 options={availabilityCityOptions}
                 onChange={handleChange}
                 error={errors.availabilityCity}
                 required
               />
+            </div>
 
-              <SearchableSelectBox
-                label="Village"
-                name="availabilityVillage"
-                value={form.availabilityVillage}
-                options={[...availabilityVillageOptions, "Other"]}
-                onChange={handleChange}
-                error={errors.availabilityVillage}
-                required
-              />
-
-              {form.availabilityVillage === "Other" && (
-                <div className="md:col-span-1">
-                  <InputBox
-                    label="Enter Village Name"
-                    name="availabilityOtherVillage"
-                    value={form.availabilityOtherVillage || ""}
-                    onChange={handleChange}
-                    error={errors.availabilityOtherVillage}
-                    required
-                  />
-                </div>
-              )}
-
+            {/* Row 3 */}
+            <div className="grid grid-cols-1 gap-4">
               <InputBox
                 label="Additional Info"
                 name="additionalInfo"
@@ -1514,160 +1704,6 @@ const ResumePage = () => {
                 onChange={handleChange}
                 error={errors.additionalInfo}
               />
-
-              <DatePicker
-                label="Joining Date"
-                name="joiningDate"
-                value={form.joiningDate}
-                onChange={handleChange}
-                error={errors.joiningDate}
-                required
-              />
-
-              <SearchableSelectBox
-                label="Job Category"
-                name="availabilityJobCategory"
-                value={form.availabilityJobCategory}
-                options={[
-                  // Healthcare
-                  "Doctor",
-                  "Nurse",
-                  "Pharmacist",
-                  "Lab Technician",
-                  "Medical Assistant",
-                  "Clinic Receptionist",
-                  "Hospital Staff",
-
-                  // Education
-                  "Teacher",
-                  "Professor",
-                  "Tutor",
-                  "School Administrator",
-
-                  // Business & Office
-                  "Accountant",
-                  "Auditor",
-                  "HR Executive",
-                  "Recruiter",
-                  "Office Administrator",
-                  "Back Office Executive",
-                  "Data Entry Operator",
-                  "Operations Executive",
-
-                  // Marketing & Sales
-                  "Marketing Executive",
-                  "Digital Marketer",
-                  "SEO Executive",
-                  "Sales Executive",
-                  "Business Development Executive",
-                  "Relationship Manager",
-
-                  // Customer Support
-                  "Customer Support Executive",
-                  "Call Center Executive",
-                  "Telecaller",
-
-                  // Engineering
-                  "Civil Engineer",
-                  "Mechanical Engineer",
-                  "Electrical Engineer",
-                  "Site Supervisor",
-
-                  // Logistics & Transport
-                  "Driver",
-                  "Delivery Executive",
-                  "Logistics Executive",
-                  "Warehouse Executive",
-
-                  // Manufacturing & Skilled
-                  "Factory Worker",
-                  "Machine Operator",
-                  "Electrician",
-                  "Plumber",
-                  "Welder",
-                  "Technician",
-                  "Maintenance Staff",
-
-                  // Retail & Hospitality
-                  "Store Sales Executive",
-                  "Cashier",
-                  "Store Manager",
-                  "Hotel Staff",
-                  "Restaurant Staff",
-                  "Cook",
-                  "Waiter",
-
-                  // Security & Facilities
-                  "Security Guard",
-                  "Housekeeping Staff",
-
-                  // Creative & Media
-                  "Content Writer",
-                  "Copywriter",
-                  "Video Editor",
-                  "Photographer",
-                  "Social Media Manager",
-
-                  // Tech
-                  "Software Developer",
-                  "Web Developer",
-                  "Frontend Developer",
-                  "Backend Developer",
-                  "Full Stack Developer",
-                  "Mobile App Developer",
-                  "UI / UX Designer",
-                  "Graphic Designer",
-                  "QA / Tester",
-                  "DevOps Engineer",
-                  "System Administrator",
-                  "IT Support",
-                  "Cyber Security Analyst",
-                  "Data Analyst",
-
-                  // Legal & Govt
-                  "Legal Assistant",
-                  "Lawyer",
-                  "Clerk",
-
-                  // Freelance & Others
-                  "Freelancer",
-                  "Consultant",
-                  "Business Owner",
-                  "Other",
-                ]}
-                // options={[
-                //   "IT & Software",
-                //   "Tech Support",
-                //   "Doctors",
-                //   "Nurses",
-                //   "Teachers",
-                //   "Marketing",
-                //   "Sales",
-                //   "Accountant",
-                //   "Engineer",
-                //   "Driver",
-                //   "Receptionist",
-                //   "Customer Support",
-                //   "Factory Worker",
-                //   "Electrician",
-                //   "Other",
-                // ]}
-                onChange={handleChange}
-                error={errors.availabilityJobCategory}
-                required
-              />
-
-              {workType === "fresher" && (
-                <InputBox
-                  label="Expected Salary (₹)"
-                  name="expectedSalary"
-                  value={form.expectedSalary || ""}
-                  onChange={handleChange}
-                  error={errors.expectedSalary}
-                  required
-                />
-              )}
-
             </div>
           </div>
 
@@ -1680,11 +1716,16 @@ const ResumePage = () => {
               onChange={handleChange}
               className="w-5 h-5 rounded border-gray-300 text-[#72B76A] focus:ring-[#72B76A]"
             />
-            <label htmlFor="declarationChecked" className="text-sm text-gray-700 cursor-pointer">
+            <label
+              htmlFor="declarationChecked"
+              className="text-sm text-gray-700 cursor-pointer"
+            >
               I hereby declare that all the information provided above is true.
             </label>
             {errors.declarationChecked && (
-              <p className="text-red-500 text-xs mt-1">{errors.declarationChecked}</p>
+              <p className="text-red-500 text-xs mt-1">
+                {errors.declarationChecked}
+              </p>
             )}
           </div>
 
@@ -1692,9 +1733,10 @@ const ResumePage = () => {
             type="submit"
             disabled={loading || !form.declarationChecked}
             className={`submit-btn 
-              w-full h-12 cursor-pointer ${loading || !form.declarationChecked
-                ? "bg-[#5e9b55] opacity-50 cursor-not-allowed"
-                : "bg-[#72B76A]"
+              w-full h-12 cursor-pointer ${
+                loading || !form.declarationChecked
+                  ? "bg-[#5e9b55] opacity-50 cursor-not-allowed"
+                  : "bg-[#72B76A]"
               } text-white rounded-xl 
               font-semibold text-lg transition active:scale-95 flex items-center justify-center gap-2
             `}
@@ -1709,8 +1751,8 @@ const ResumePage = () => {
             )}
           </button>
         </form>
-      </div >
-    </div >
+      </div>
+    </div>
   );
 };
 

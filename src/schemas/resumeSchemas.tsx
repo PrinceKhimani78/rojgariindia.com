@@ -2,6 +2,7 @@ import { z } from "zod";
 
 export const experienceSchema = z
   .object({
+    industry: z.string().min(1, "Industry is required"),
     position: z.string().min(1, "Position is required"),
     company: z.string().min(1, "Company name is required"),
     currentWages: z.string().min(1, "Current wages required"),
@@ -25,7 +26,7 @@ export const experienceSchema = z
     {
       message: "End date cannot be before start date",
       path: ["endDate"],
-    }
+    },
   );
 
 export const educationSchema = z.object({
@@ -63,16 +64,16 @@ const baseSchema = {
     .optional()
     .refine(
       (val) => !val || /^(\+91)\s?[6-9]\d{9}$/.test(val),
-      "Enter a valid Indian mobile number"
+      "Enter a valid Indian mobile number",
     ),
   phone: z
     .string()
     .refine(
       (val) => /^(\+91)\s?[6-9]\d{9}$/.test(val),
-      "Enter a valid Indian mobile number"
+      "Enter a valid Indian mobile number",
     ),
   skillsList: z.array(skillSchema).min(1, "Add at least one skill"),
-  languagesKnown: z.array(z.string()).min(1, "Select at least one language"),
+  languagesKnown: z.array(z.string()).default([]),
 
   // Location Fields
   state: z.string().min(1, "State required"),
@@ -87,7 +88,7 @@ const baseSchema = {
   availabilityJobCategory: z.string().min(1, "Job category required"),
   availabilityState: z.string().min(1, "Availability state required"),
   availabilityDistrict: z.string().min(1, "Availability district required"),
-  availabilityCity: z.string().min(1, "Availability city required"),
+  availabilityCity: z.array(z.string()).nonempty("Select at least one city"),
   availabilityVillage: z.string().min(1, "Availability village required"),
 
   // Summaries
