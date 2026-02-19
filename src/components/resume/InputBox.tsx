@@ -1,4 +1,13 @@
-const InputBox = ({
+type InputBoxProps = {
+  label: string;
+  name: string;
+  value: string;
+  onChange: any;
+  type?: string;
+  error?: any; // 👈 optional
+  required?: boolean;
+};
+const InputBox: React.FC<InputBoxProps> = ({
   label,
   name,
   value,
