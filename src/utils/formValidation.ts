@@ -25,6 +25,7 @@ export const initialForm = {
   summary: "",
   availabilityCategory: "",
   availabilityIndustry: "",
+  availabilityCustomIndustry: "",
   availabilityJobCategory: "",
   availabilityState: "",
   availabilityDistrict: "",

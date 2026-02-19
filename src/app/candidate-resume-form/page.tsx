@@ -44,7 +44,6 @@ type IndiaJson = {
 const INDUSTRY_OPTIONS = [
   "Healthcare",
   "Information Technology",
-  "Software Development",
   "Construction",
   "Education",
   "Finance & Accounting",
@@ -122,6 +121,7 @@ type WorkType = "experienced" | "fresher";
 
 type ExperienceEntry = {
   industry: string;
+  customIndustry?: string;
   position: string;
   company: string;
   noticePeriod: string;
@@ -170,6 +170,7 @@ const ResumePage = () => {
   >([
     {
       industry: "",
+      customIndustry: "",
       position: "",
       company: "",
       noticePeriod: "",
@@ -177,7 +178,27 @@ const ResumePage = () => {
       endDate: "",
     },
   ]);
+  const updateExperience = (
+    index: number,
+    field: keyof ExperienceEntry,
+    value: string,
+  ) => {
+    setExperiencesExperienced((prev) => {
+      const updated = [...prev];
 
+      updated[index] = {
+        ...updated[index],
+        [field]: value,
+      };
+
+      // If industry changes and is not Other → clear customIndustry
+      if (field === "industry" && value !== "Other") {
+        updated[index].customIndustry = "";
+      }
+
+      return updated;
+    });
+  };
   const [educationExperienced, setEducationExperienced] = useState([
     { degree: "", university: "", passingYear: "", grade: "" },
   ]);
@@ -247,25 +268,92 @@ const ResumePage = () => {
 
   // validateExperienceDates moved to utils; page will set/clear errors using the result
 
-  const handleChange = (
-    e:
-      | React.ChangeEvent<HTMLInputElement>
-      | React.ChangeEvent<HTMLTextAreaElement>
-      | React.ChangeEvent<HTMLSelectElement>
-      | {
-          target: {
-            name: string;
-            value: any;
-            type?: string;
-            checked?: boolean;
-          };
-        },
-  ) => {
-    let { name, value } = e.target;
+  const handleChange = (arg1: any, arg2?: any) => {
+    let name: string;
+    let value: any;
 
-    if ("type" in e.target && e.target.type === "checkbox") {
-      value = (e.target as any).checked;
+    // 🔹 Case 1: Normal Input (event)
+    if (arg1?.target) {
+      name = arg1.target.name;
+
+      if (arg1.target.type === "checkbox") {
+        value = arg1.target.checked;
+      } else {
+        value = arg1.target.value;
+      }
     }
+    // 🔹 Case 2: SearchableSelectBox (name, value)
+    else {
+      name = arg1;
+      value = arg2;
+    }
+
+    const actualValue = typeof value === "string" ? value : value?.value || "";
+
+    if (!name || typeof name !== "string") return;
+
+    // ===============================
+    // WORK EXPERIENCE INDUSTRY
+    // ===============================
+    if (name.startsWith("industry-")) {
+      const index = parseInt(name.split("-")[1]);
+
+      setExperiencesExperienced((prev) => {
+        const updated = [...prev];
+        updated[index].industry = actualValue;
+
+        if (actualValue !== "Other") {
+          updated[index].customIndustry = "";
+        }
+
+        return updated;
+      });
+
+      return;
+    }
+
+    if (name.startsWith("customIndustry-")) {
+      const index = parseInt(name.split("-")[1]);
+
+      setExperiencesExperienced((prev) => {
+        const updated = [...prev];
+        updated[index].customIndustry = actualValue;
+        return updated;
+      });
+
+      return;
+    }
+
+    // ===============================
+    // AVAILABILITY INDUSTRY
+    // ===============================
+    if (name === "availabilityIndustry") {
+      setForm((prev) => ({
+        ...prev,
+        availabilityIndustry: actualValue,
+        availabilityCustomIndustry:
+          actualValue !== "Other" ? "" : prev.availabilityCustomIndustry,
+        availabilityJobCategory: "",
+      }));
+      return;
+    }
+
+    if (name === "availabilityCustomIndustry") {
+      setForm((prev) => ({
+        ...prev,
+        availabilityCustomIndustry: actualValue,
+      }));
+      return;
+    }
+
+    // ===============================
+    // DEFAULT FORM FIELDS
+    // ===============================
+    setForm((prev) => ({
+      ...prev,
+      [name]: actualValue,
+    }));
+
     // Mark field as touched (so we show validation only after interaction)
     setTouched((t) => ({ ...t, [name]: true }));
 
@@ -1231,6 +1319,14 @@ const ResumePage = () => {
                       error={errors[`industry-${index}`]}
                       required
                     />
+                    {exp.industry === "Other" && (
+                      <InputBox
+                        label="Enter Your Industry"
+                        name={`customIndustry-${index}`}
+                        value={exp.customIndustry || ""}
+                        onChange={handleChange}
+                      />
+                    )}
                     <InputBox
                       label="Position"
                       name={`position-${index}`}
@@ -1580,46 +1676,48 @@ const ResumePage = () => {
           <div className="space-y-4">
             <h3 className="text-lg font-semibold text-gray-800">Your Skills</h3>
 
-            <div className="flex flex-wrap gap-3 items-center">
-              {skillsList.map((skill, index) => (
-                <div key={index} className="flex items-center gap-2">
-                  <input
-                    type="text"
-                    name={`skill-name-${index}`}
-                    value={skill.name}
-                    onChange={handleChange}
-                    placeholder="Enter Skill"
-                    className={`px-4 py-2 rounded-lg border outline-none transition
-            ${errors[`skill-name-${index}`] ? "border-red-500" : "border-gray-300"}
-            focus:border-[#72B76A]`}
-                  />
+            <div className="border border-gray-200 rounded-xl p-5 bg-white/70 space-y-4">
+              {/* Inputs Row */}
+              <div className="flex flex-wrap gap-4">
+                {skillsList.map((skill, index) => (
+                  <div key={index} className="w-70">
+                    <InputBox
+                      label="Skill Name"
+                      name={`skill-name-${index}`}
+                      value={skill.name}
+                      onChange={handleChange}
+                      error={errors[`skill-name-${index}`]}
+                      required
+                    />
+                  </div>
+                ))}
+              </div>
 
-                  {skillsList.length > 1 && (
-                    <button
-                      type="button"
-                      onClick={() =>
-                        setSkillsList(skillsList.filter((_, i) => i !== index))
-                      }
-                      className="w-7 h-7 text-lg font-bold rounded-md border
-              text-[#72B76A] border-[#72B76A]
-              hover:bg-[#72B76A] hover:text-white"
-                    >
-                      –
-                    </button>
-                  )}
-                </div>
-              ))}
+              {/* Buttons Below */}
+              <div className="flex gap-2">
+                <button
+                  type="button"
+                  onClick={() =>
+                    setSkillsList((prev) => [...prev, { name: "" }])
+                  }
+                  className="w-7 h-7 text-xl font-bold rounded-md text-[#72B76A] border border-[#72B76A] hover:bg-[#72B76A] hover:text-white"
+                >
+                  +
+                </button>
 
-              {/* ADD BUTTON */}
-              <button
-                type="button"
-                onClick={() => setSkillsList([...skillsList, { name: "" }])}
-                className="w-7 h-7 text-lg font-bold rounded-md border
-        text-[#72B76A] border-[#72B76A]
-        hover:bg-[#72B76A] hover:text-white"
-              >
-                +
-              </button>
+                <button
+                  type="button"
+                  disabled={skillsList.length === 1}
+                  onClick={() => setSkillsList((prev) => prev.slice(0, -1))}
+                  className={`w-7 h-7 text-xl font-bold rounded-md border transition-colors ${
+                    skillsList.length === 1
+                      ? "text-[#A6D8A3] border-[#A6D8A3] cursor-not-allowed"
+                      : "text-[#72B76A] border-[#72B76A] hover:bg-[#72B76A] hover:text-white"
+                  }`}
+                >
+                  –
+                </button>
+              </div>
             </div>
           </div>
 
@@ -1651,6 +1749,15 @@ const ResumePage = () => {
                 required
               />
 
+              {form.availabilityIndustry === "Other" && (
+                <InputBox
+                  label="Enter Your Industry"
+                  name="availabilityCustomIndustry"
+                  value={form.availabilityCustomIndustry || ""}
+                  onChange={handleChange}
+                />
+              )}
+
               <SearchableSelectBox
                 label="Job Category"
                 name="availabilityJobCategory"
@@ -1660,10 +1767,10 @@ const ResumePage = () => {
                 error={errors.availabilityJobCategory}
                 required
               />
-            </div>
+              {/* </div> */}
 
-            {/* Row 2 */}
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              {/* Row 2 */}
+              {/* <div className="grid grid-cols-1 md:grid-cols-3 gap-4"> */}
               <SearchableSelectBox
                 label="State"
                 name="availabilityState"
