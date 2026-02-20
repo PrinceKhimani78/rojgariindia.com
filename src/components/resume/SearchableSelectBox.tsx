@@ -2,13 +2,17 @@
 
 import React, { useState, useRef, useEffect } from "react";
 import { FaChevronDown } from "react-icons/fa";
+type SelectOption = {
+  label: string;
+  value: string;
+};
 
 interface SearchableSelectBoxProps {
   label: string;
   name: string;
   value: string;
-  options: string[];
-  onChange: (name: string, value: any) => void; // Emulating input event for compatibility
+  options: SelectOption[];
+  onChange: (name: string, value: string) => void;
   error?: string;
   placeholder?: string;
   disabled?: boolean;
@@ -26,36 +30,36 @@ const SearchableSelectBox: React.FC<SearchableSelectBoxProps> = ({
   disabled = false,
   required = false,
 }) => {
+  // console.log("OPTIONS RECEIVED:", name, options);
   const [isOpen, setIsOpen] = useState(false);
   const [searchTerm, setSearchTerm] = useState("");
-  const [filteredOptions, setFilteredOptions] = useState<string[]>(options);
+  const [filteredOptions, setFilteredOptions] = useState<SelectOption[]>([]);
   const containerRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
 
-  // Sync searchTerm with value prop changes (e.g., when parent resets form or value selected)
   useEffect(() => {
     setSearchTerm(value || "");
   }, [value]);
-
+  useEffect(() => {
+    setFilteredOptions(options || []);
+  }, [options]);
   // Update filtered options when options prop or searchTerm changes
   useEffect(() => {
     if (!searchTerm) {
-      setFilteredOptions(options);
-    } else {
-      const lower = searchTerm.toLowerCase();
-      // If the current search term EXACTLY matches the currently selected value, show all options
-      // This allows the user to click the dropdown and see list even if value is selected
-      if (value && searchTerm === value) {
-        setFilteredOptions(options);
-        return;
-      }
-
-      const filtered = options.filter((opt) =>
-        opt.toLowerCase().includes(lower),
-      );
-      setFilteredOptions(filtered);
+      setFilteredOptions(options || []);
+      return;
     }
-  }, [searchTerm, options, value]);
+
+    const lower = searchTerm.toLowerCase();
+
+    const filtered = (options || []).filter((opt: any) => {
+      const label = typeof opt === "string" ? opt : opt?.label || "";
+
+      return label.toLowerCase().includes(lower);
+    });
+
+    setFilteredOptions(filtered);
+  }, [searchTerm, options]);
 
   // Close dropdown on outside click
   useEffect(() => {
@@ -65,19 +69,20 @@ const SearchableSelectBox: React.FC<SearchableSelectBoxProps> = ({
         !containerRef.current.contains(event.target as Node)
       ) {
         setIsOpen(false);
-        // On blur, if the typed text isn't a valid option, revert to previous valid value or clear?
-        // Requirement: Strict selection (except for 'Other' in parent logic, but this component should just ensure valid click).
-        // Best UX: If text doesn't match EXACTLY an option, revert to `value` prop.
+
         if (value !== searchTerm) {
           // Check if searchTerm IS an option (case insensitive match maybe?)
-          const match = options.find(
-            (o) => o.toLowerCase() === searchTerm.toLowerCase(),
-          );
+          const match = (options || []).find((opt: any) => {
+            const label = typeof opt === "string" ? opt : opt?.label || "";
+
+            return label.toLowerCase() === (searchTerm || "").toLowerCase();
+          });
+
           if (match) {
-            // If it's a match but just case difference, fire change
-            notifyChange(match);
+            const valueToSend = typeof match === "string" ? match : match.value;
+
+            notifyChange(valueToSend);
           } else {
-            // Revert to prop value
             setSearchTerm(value || "");
           }
         }
@@ -88,20 +93,12 @@ const SearchableSelectBox: React.FC<SearchableSelectBoxProps> = ({
   }, [value, searchTerm, options]);
 
   const notifyChange = (newValue: string) => {
-    // Create a synthetic event
-    const event = {
-      target: {
-        name: name,
-        value: newValue,
-      },
-    } as React.ChangeEvent<HTMLInputElement>;
-    onChange(name, searchTerm);
+    onChange(name, newValue);
   };
 
   const handleSelect = (option: string) => {
     setSearchTerm(option);
     notifyChange(option);
-    onChange(name, option);
     setIsOpen(false);
   };
 
@@ -109,14 +106,6 @@ const SearchableSelectBox: React.FC<SearchableSelectBoxProps> = ({
     setSearchTerm(e.target.value);
     setIsOpen(true);
 
-    // For "Other" logic: if "Other" is typed manually? No, usually text input is separate.
-    // If strict selection is required, we don't fire onChange with partial text?
-    // BUT the requirements say "User cannot type free text initially... Must match list item".
-    // However, for the "Other" logic, the PARENT will handle "Other" value.
-
-    // If we only fire onChange on CLICK, validation might fail until click.
-    // IF we fire onChange on every Type, parent validation might complain "invalid value".
-    // Let's fire clear event if empty.
     if (e.target.value === "") {
       notifyChange("");
     }
@@ -133,7 +122,7 @@ const SearchableSelectBox: React.FC<SearchableSelectBoxProps> = ({
           ref={inputRef}
           type="text"
           name={name} // Needed for some form libs, but we use controlled
-          value={searchTerm}
+          value={searchTerm || ""}
           onChange={handleInputChange}
           onFocus={handleFocus}
           placeholder={placeholder}
@@ -147,14 +136,6 @@ const SearchableSelectBox: React.FC<SearchableSelectBoxProps> = ({
         />
 
         <label
-          //         className={`absolute left-4 px-1 bg-white text-gray-500 pointer-events-none
-          // transition-all duration-150
-          // top-1/2 -translate-y-1/2
-          // peer-focus:top-1 peer-focus:-translate-y-1/2 peer-focus:text-sm peer-focus:text-[#72B76A]
-          // peer-placeholder-shown:top-1/2 peer-placeholder-shown:-translate-y-1/2 peer-placeholder-shown:text-base
-          // peer-not-placeholder-shown:top-1 peer-not-placeholder-shown:-translate-y-1/2 peer-not-placeholder-shown:text-sm peer-not-placeholder-shown:text-[#72B76A]
-          // ${value || searchTerm ? "top-1 -translate-y-1/2 text-sm text-[#72B76A]" : ""}
-          // `}
           className={`absolute left-4 -top-2 px-1 bg-white
   text-sm pointer-events-none
   text-gray-600
@@ -177,11 +158,13 @@ const SearchableSelectBox: React.FC<SearchableSelectBoxProps> = ({
           {filteredOptions.length > 0 ? (
             filteredOptions.map((option, idx) => (
               <li
-                key={idx}
-                onClick={() => handleSelect(option)}
-                className={`px-4 py-2 cursor-pointer hover:bg-gray-50 text-gray-700 text-sm ${option === value ? "bg-green-50 text-[#72B76A] font-medium" : ""}`}
+                key={option.value || idx}
+                onClick={() => handleSelect(option.value)}
+                className={`px-4 py-2 cursor-pointer hover:bg-gray-50 text-gray-700 text-sm ${
+                  option.value === value ? "bg-green-50" : ""
+                }`}
               >
-                {option}
+                {typeof option === "string" ? option : option.label}
               </li>
             ))
           ) : (
