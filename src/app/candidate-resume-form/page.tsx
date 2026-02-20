@@ -41,22 +41,28 @@ type IndiaJson = {
     };
   };
 };
-const INDUSTRY_OPTIONS = [
-  "Healthcare",
-  "Information Technology",
-  "Construction",
-  "Education",
-  "Finance & Accounting",
-  "Sales & Marketing",
-  "Manufacturing",
-  "Retail",
-  "Logistics",
-  "Hospitality",
-  "Engineering",
-  "Government",
-  "Legal",
-  "Freelancer",
-  "Other",
+
+type SelectOption = {
+  label: string;
+  value: string;
+};
+
+const INDUSTRY_OPTIONS: SelectOption[] = [
+  { label: "Healthcare", value: "Healthcare" },
+  { label: "Information Technology", value: "Information Technology" },
+  { label: "Construction", value: "Construction" },
+  { label: "Education", value: "Education" },
+  { label: "Finance & Accounting", value: "Finance & Accounting" },
+  { label: "Sales & Marketing", value: "Sales & Marketing" },
+  { label: "Manufacturing", value: "Manufacturing" },
+  { label: "Retail", value: "Retail" },
+  { label: "Logistics", value: "Logistics" },
+  { label: "Hospitality", value: "Hospitality" },
+  { label: "Engineering", value: "Engineering" },
+  { label: "Government", value: "Government" },
+  { label: "Legal", value: "Legal" },
+  { label: "Freelancer", value: "Freelancer" },
+  { label: "Other", value: "Other" },
 ];
 
 const INDUSTRY_JOB_MAP: Record<string, string[]> = {
@@ -83,38 +89,38 @@ const INDUSTRY_JOB_MAP: Record<string, string[]> = {
   Other: ["Other"],
 };
 
-const INDIAN_LANGUAGES = [
-  "Hindi",
-  "English",
-  "Bengali",
-  "Marathi",
-  "Telugu",
-  "Tamil",
-  "Gujarati",
-  "Urdu",
-  "Kannada",
-  "Odia",
-  "Malayalam",
-  "Punjabi",
-  "Sanskrit",
-  "Assamese",
-  "Maithili",
-  "Santali",
-  "Kashmiri",
-  "Nepali",
-  "Gondi",
-  "Sindhi",
-  "Konkani",
-  "Dogri",
-  "Manipuri",
-  "Khasi",
-  "Bodo",
-  "Garo",
-  "Mizo",
-  "Ho",
-  "Kui",
-  "Mundari",
-  "Tripuri",
+const INDIAN_LANGUAGES: SelectOption[] = [
+  { label: "Hindi", value: "Hindi" },
+  { label: "English", value: "English" },
+  { label: "Bengali", value: "Bengali" },
+  { label: "Marathi", value: "Marathi" },
+  { label: "Telugu", value: "Telugu" },
+  { label: "Tamil", value: "Tamil" },
+  { label: "Gujarati", value: "Gujarati" },
+  { label: "Urdu", value: "Urdu" },
+  { label: "Kannada", value: "Kannada" },
+  { label: "Odia", value: "Odia" },
+  { label: "Malayalam", value: "Malayalam" },
+  { label: "Punjabi", value: "Punjabi" },
+  { label: "Sanskrit", value: "Sanskrit" },
+  { label: "Assamese", value: "Assamese" },
+  { label: "Maithili", value: "Maithili" },
+  { label: "Santali", value: "Santali" },
+  { label: "Kashmiri", value: "Kashmiri" },
+  { label: "Nepali", value: "Nepali" },
+  { label: "Gondi", value: "Gondi" },
+  { label: "Sindhi", value: "Sindhi" },
+  { label: "Konkani", value: "Konkani" },
+  { label: "Dogri", value: "Dogri" },
+  { label: "Manipuri", value: "Manipuri" },
+  { label: "Khasi", value: "Khasi" },
+  { label: "Bodo", value: "Bodo" },
+  { label: "Garo", value: "Garo" },
+  { label: "Mizo", value: "Mizo" },
+  { label: "Ho", value: "Ho" },
+  { label: "Kui", value: "Kui" },
+  { label: "Mundari", value: "Mundari" },
+  { label: "Tripuri", value: "Tripuri" },
 ];
 
 type WorkType = "experienced" | "fresher";
@@ -145,7 +151,6 @@ const ResumePage = () => {
   const { showSnackbar } = useGlobalUI();
   const [workType, setWorkType] = useState<WorkType>("experienced");
   const [indiaData, setIndiaData] = useState<IndiaJson | null>(null);
-
   const [showPopup, setShowPopup] = useState(false);
   const [popupStep, setPopupStep] = useState<"email" | "otp">("email");
   const [anim, setAnim] = useState("");
@@ -164,6 +169,35 @@ const ResumePage = () => {
   >({});
 
   const [form, setForm] = useState(initialForm);
+  // Location dropdown options
+
+  const [stateOptions, setStateOptions] = useState<
+    { label: string; value: string }[]
+  >([]);
+  const [districtOptions, setDistrictOptions] = useState<
+    { label: string; value: string }[]
+  >([]);
+
+  const [talukaOptions, setTalukaOptions] = useState<
+    { label: string; value: string }[]
+  >([]);
+
+  const [villageOptions, setVillageOptions] = useState<
+    { label: string; value: string }[]
+  >([]);
+  const [availabilityStateOptions, setAvailabilityStateOptions] = useState<
+    { label: string; value: string }[]
+  >([]);
+  const [availabilityDistrictOptions, setAvailabilityDistrictOptions] =
+    useState<{ label: string; value: string }[]>([]);
+
+  const [availabilityCityOptions, setAvailabilityCityOptions] = useState<
+    { label: string; value: string }[]
+  >([]);
+
+  const [availabilityVillageOptions, setAvailabilityVillageOptions] = useState<
+    { label: string; value: string }[]
+  >([]);
   // experience
   const [experiencesExperienced, setExperiencesExperienced] = useState<
     ExperienceEntry[]
@@ -218,12 +252,31 @@ const ResumePage = () => {
     CertificationEntry[]
   >([{ name: "", year: "", achievement: "" }]);
 
-  // Default years to "0" since we removed the input but schema might check min length?
-  // We updated schema to optional? No.
-  // We'll set it to "0" to pass "min(1)" check.
-
   const [photoPreview, setPhotoPreview] = useState<string | null>(null);
   const [photoFile, setPhotoFile] = useState<File | null>(null); // Store the actual file
+  // states
+  useEffect(() => {
+    const fetchStates = async () => {
+      try {
+        const res = await fetch("/api/location/states");
+        const result = await res.json();
+
+        if (result.success && result.data?.states) {
+          const formattedStates = result.data.states.map((item: any) => ({
+            label: item.name,
+            value: item.name,
+          }));
+
+          setStateOptions(formattedStates);
+          setAvailabilityStateOptions(formattedStates);
+        }
+      } catch (error) {
+        console.error("Failed to load states:", error);
+      }
+    };
+
+    fetchStates();
+  }, []);
 
   useEffect(() => {
     setIsClient(true);
@@ -244,6 +297,7 @@ const ResumePage = () => {
   useEffect(() => {
     setShowPopup(true);
   }, []);
+
   const handleEmailNext = async () => {
     if (!form.email) return alert(UI_MESSAGES.ENTER_EMAIL);
 
@@ -266,9 +320,7 @@ const ResumePage = () => {
     }
   };
 
-  // validateExperienceDates moved to utils; page will set/clear errors using the result
-
-  const handleChange = (arg1: any, arg2?: any) => {
+  const handleChange = async (arg1: any, arg2?: any) => {
     let name: string;
     let value: any;
 
@@ -288,13 +340,16 @@ const ResumePage = () => {
       value = arg2;
     }
 
-    const actualValue = typeof value === "string" ? value : value?.value || "";
+    let actualValue = "";
+
+    if (typeof value === "string") {
+      actualValue = value;
+    } else if (value && typeof value === "object" && "value" in value) {
+      actualValue = value.value;
+    }
 
     if (!name || typeof name !== "string") return;
 
-    // ===============================
-    // WORK EXPERIENCE INDUSTRY
-    // ===============================
     if (name.startsWith("industry-")) {
       const index = parseInt(name.split("-")[1]);
 
@@ -324,9 +379,6 @@ const ResumePage = () => {
       return;
     }
 
-    // ===============================
-    // AVAILABILITY INDUSTRY
-    // ===============================
     if (name === "availabilityIndustry") {
       setForm((prev) => ({
         ...prev,
@@ -349,10 +401,13 @@ const ResumePage = () => {
     // ===============================
     // DEFAULT FORM FIELDS
     // ===============================
-    setForm((prev) => ({
-      ...prev,
-      [name]: actualValue,
-    }));
+    if (Array.isArray(value)) {
+      setForm((prev) => ({
+        ...prev,
+        [name]: value,
+      }));
+      return;
+    }
 
     // Mark field as touched (so we show validation only after interaction)
     setTouched((t) => ({ ...t, [name]: true }));
@@ -362,9 +417,6 @@ const ResumePage = () => {
       setDuplicateError("");
     }
 
-    // ------------------------------
-    // SPECIAL CASE: DYNAMIC ARRAY FIELDS
-    // ------------------------------
     if (name.includes("-")) {
       const parts = name.split("-");
       const index = Number(parts[parts.length - 1]);
@@ -433,75 +485,79 @@ const ResumePage = () => {
       }
     }
 
-    // ------------------------------
-    // CASCADING SELECT LOGIC (unchanged)
-    // ------------------------------
+    //  personal info
     if (name === "state") {
-      setForm((f) => ({
-        ...f,
-        state: value,
-        district: "",
-        city: "",
-        village: "",
-      }));
-      scheduleValidate("state", value);
-      return;
+      const res = await fetch(`/api/location/districts?state=${value}`);
+      const result = await res.json();
+
+      if (result.success) {
+        setDistrictOptions(
+          result.data.districts.map((d: any) => ({
+            label: d.name,
+            value: d.name,
+          })),
+        );
+        setTalukaOptions([]);
+        setVillageOptions([]);
+      }
     }
 
     if (name === "district") {
-      setForm((f) => ({
-        ...f,
-        district: value,
-        city: "",
-        village: "",
-      }));
-      scheduleValidate("district", value);
-      return;
+      const res = await fetch(`/api/location/talukas?district=${value}`);
+      const result = await res.json();
+
+      if (result.success) {
+        setTalukaOptions(
+          result.data.talukas.map((t: any) => ({
+            label: t.name,
+            value: t.name,
+          })),
+        );
+        setVillageOptions([]);
+      }
     }
 
-    if (name === "city") {
-      setForm((f) => ({
-        ...f,
-        city: value,
-        village: "",
-      }));
-      scheduleValidate("city", value);
-      return;
-    }
+    if (name === "taluka") {
+      const res = await fetch(`/api/location/villages?taluka=${value}`);
+      const result = await res.json();
 
-    // Availability cascading
+      if (result.success) {
+        setVillageOptions(
+          result.data.villages.map((v: any) => ({
+            label: v.name,
+            value: v.name,
+          })),
+        );
+      }
+    }
+    // ---------------- AVAILABILITY ----------------
     if (name === "availabilityState") {
-      setForm((f) => ({
-        ...f,
-        availabilityState: value,
-        availabilityDistrict:
-          value === f.availabilityState ? f.availabilityDistrict : "",
-        availabilityCity: [],
-      }));
-      scheduleValidate("availabilityState", value);
-      return;
+      const res = await fetch(`/api/location/districts?state=${value}`);
+      const result = await res.json();
+
+      if (result.success) {
+        setAvailabilityDistrictOptions(
+          result.data.districts.map((d: any) => ({
+            label: d.name,
+            value: d.name,
+          })),
+        );
+        setAvailabilityCityOptions([]);
+      }
     }
 
     if (name === "availabilityDistrict") {
-      setForm((f) => ({
-        ...f,
-        availabilityDistrict: value,
-        availabilityCity:
-          value === f.availabilityDistrict ? f.availabilityCity : [],
-      }));
-      scheduleValidate("availabilityDistrict", value);
-      return;
-    }
+      const res = await fetch(`/api/location/talukas?district=${value}`);
+      const result = await res.json();
 
-    if (name === "availabilityCity") {
-      setForm((f) => ({
-        ...f,
-        availabilityCity: value,
-        availabilityVillage:
-          value === f.availabilityCity ? f.availabilityVillage : "",
-      }));
-      scheduleValidate("availabilityCity", value);
-      return;
+      if (result.success) {
+        setAvailabilityCityOptions(
+          result.data.talukas.map((t: any) => ({
+            label: t.name,
+            value: t.name,
+          })),
+        );
+      }
     }
 
     // MOBILE NUMBER & ALTERNATE MOBILE VALIDATION
@@ -543,12 +599,12 @@ const ResumePage = () => {
       value = value.replace(/\D/g, "");
     }
 
-    setForm((prev) => ({ ...prev, [name]: value }));
+    setForm((prev) => ({ ...prev, [name]: actualValue }));
 
     // ------------------------------
     // REAL-TIME VALIDATION (debounced)
     // ------------------------------
-    scheduleValidate(name, value);
+    scheduleValidate(name, actualValue);
   };
 
   // Schedule a debounced validateField call per field
@@ -887,42 +943,6 @@ const ResumePage = () => {
     }
   };
 
-  const stateOptions = indiaData ? Object.keys(indiaData) : [];
-  const districtOptions =
-    indiaData && form.state ? Object.keys(indiaData[form.state]) : [];
-  const cityOptions =
-    indiaData && form.state && form.district
-      ? Object.keys(indiaData[form.state][form.district])
-      : [];
-  const villageOptions =
-    indiaData && form.state && form.district && form.city
-      ? indiaData[form.state][form.district][form.city]
-      : [];
-
-  const availabilityStateOptions = stateOptions;
-  const availabilityDistrictOptions =
-    indiaData && form.availabilityState
-      ? Object.keys(indiaData[form.availabilityState])
-      : [];
-  const availabilityCityOptions =
-    indiaData &&
-    form.availabilityState &&
-    form.availabilityDistrict &&
-    indiaData[form.availabilityState][form.availabilityDistrict]
-      ? Object.keys(
-          indiaData[form.availabilityState][form.availabilityDistrict],
-        )
-      : [];
-  // const availabilityVillageOptions =
-  //   indiaData &&
-  //   form.availabilityState &&
-  //   form.availabilityDistrict &&
-  //   form.availabilityCity
-  //     ? indiaData[form.availabilityState][form.availabilityDistrict][
-  //         form.availabilityCity
-  //       ]
-  //     : [];
-
   if (!isClient) return null;
   // console.log("CURRENT ERRORS --->", errors);
   const experiences = workType === "experienced" ? experiencesExperienced : [];
@@ -1110,7 +1130,11 @@ const ResumePage = () => {
                 label="Gender"
                 name="gender"
                 value={form.gender || ""}
-                options={["Male", "Female", "Other"]}
+                options={[
+                  { label: "Male", value: "Male" },
+                  { label: "Female", value: "Female" },
+                  { label: "Other", value: "Other" },
+                ]}
                 onChange={handleChange}
                 error={errors.gender}
                 required
@@ -1119,7 +1143,12 @@ const ResumePage = () => {
                 label="Marital Status"
                 name="maritalStatus"
                 value={form.maritalStatus || ""}
-                options={["Single", "Married", "Divorced", "Widowed"]}
+                options={[
+                  { label: "Single", value: "Single" },
+                  { label: "Married", value: "Married" },
+                  { label: "Divorced", value: "Divorced" },
+                  { label: "Widowed", value: "Widowed" },
+                ]}
                 onChange={handleChange}
                 error={errors.maritalStatus}
                 required
@@ -1144,18 +1173,21 @@ const ResumePage = () => {
               />
               <SearchableSelectBox
                 label="City"
-                name="city"
-                value={form.city}
-                options={cityOptions}
+                name="taluka"
+                value={form.taluka}
+                options={talukaOptions}
                 onChange={handleChange}
-                error={errors.city}
+                error={errors.taluka}
                 required
               />
               <SearchableSelectBox
                 label="Village"
                 name="village"
                 value={form.village}
-                options={[...villageOptions, "Other"]}
+                options={[
+                  ...villageOptions,
+                  { label: "Other", value: "Other" },
+                ]}
                 onChange={handleChange}
                 error={errors.village}
                 required
@@ -1195,7 +1227,7 @@ const ResumePage = () => {
                 label="Languages Known"
                 name="languagesKnown"
                 value={form.languagesKnown}
-                options={INDIAN_LANGUAGES}
+                options={INDIAN_LANGUAGES.map((l) => l.value)}
                 onChange={handleChange}
                 error={errors.languagesKnown}
               />
@@ -1352,12 +1384,11 @@ const ResumePage = () => {
                         error={errors[`noticePeriod-${index}`]}
                       />
                     )}
-
                     <SearchableSelectBox
                       label="City"
                       name={`currentCity-${index}`}
                       value={exp.currentCity || ""}
-                      options={cityOptions}
+                      options={talukaOptions}
                       onChange={handleChange}
                       error={errors[`currentCity-${index}`]}
                       required
@@ -1366,7 +1397,10 @@ const ResumePage = () => {
                       label=" Village"
                       name={`currentVillage-${index}`}
                       value={exp.currentVillage || ""}
-                      options={[...villageOptions, "Other"]}
+                      options={[
+                        ...villageOptions,
+                        { label: "Other", value: "Other" },
+                      ]}
                       onChange={handleChange}
                       error={errors[`currentVillage-${index}`]}
                       required
@@ -1733,7 +1767,12 @@ const ResumePage = () => {
                 label="Employment Type"
                 name="availabilityCategory"
                 value={form.availabilityCategory}
-                options={["Full-Time", "Part-Time", "Contract", "Internship"]}
+                options={[
+                  { label: "Full-Time", value: "Full-Time" },
+                  { label: "Part-Time", value: "Part-Time" },
+                  { label: "Contract", value: "Contract" },
+                  { label: "Internship", value: "Internship" },
+                ]}
                 onChange={handleChange}
                 error={errors.availabilityCategory}
                 required
@@ -1762,7 +1801,10 @@ const ResumePage = () => {
                 label="Job Category"
                 name="availabilityJobCategory"
                 value={form.availabilityJobCategory}
-                options={jobCategoryOptions}
+                options={jobCategoryOptions.map((j) => ({
+                  label: j,
+                  value: j,
+                }))}
                 onChange={handleChange}
                 error={errors.availabilityJobCategory}
                 required
@@ -1777,7 +1819,6 @@ const ResumePage = () => {
                 value={form.availabilityState}
                 options={availabilityStateOptions}
                 onChange={handleChange}
-                error={errors.availabilityState}
                 required
               />
 
@@ -1787,7 +1828,6 @@ const ResumePage = () => {
                 value={form.availabilityDistrict}
                 options={availabilityDistrictOptions}
                 onChange={handleChange}
-                error={errors.availabilityDistrict}
                 required
               />
 
@@ -1795,7 +1835,7 @@ const ResumePage = () => {
                 label="City"
                 name="availabilityCity"
                 value={form.availabilityCity || []}
-                options={availabilityCityOptions}
+                options={availabilityCityOptions.map((opt) => opt.value)}
                 onChange={handleChange}
                 error={errors.availabilityCity}
                 required

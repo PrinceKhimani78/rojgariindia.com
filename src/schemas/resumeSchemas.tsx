@@ -6,6 +6,7 @@ export const experienceSchema = z
     position: z.string().min(1, "Position is required"),
     company: z.string().min(1, "Company name is required"),
     currentWages: z.string().min(1, "Current wages required"),
+    taluka: z.string().min(1, "Taluka is required"),
     currentCity: z.string().min(1, "Current city required"),
     currentVillage: z.string().min(1, "Current village required"),
     currentVillageOther: z.string().optional(),
@@ -53,12 +54,20 @@ const baseSchema = {
   email: z.string().email("Invalid email"),
   totalExperience: z.string().optional(),
   dob: z.string().min(1, "Date of birth required"),
-  gender: z.enum(["Male", "Female", "Other"], {
-    message: "Select gender",
-  }),
-  maritalStatus: z.enum(["Single", "Married", "Divorced", "Widowed"], {
-    message: "Select marital status",
-  }),
+  gender: z
+    .string()
+    .min(1, "Select gender")
+    .refine(
+      (val) => ["Male", "Female", "Other"].includes(val),
+      "Select gender",
+    ),
+  maritalStatus: z
+    .string()
+    .min(1, "Select marital status")
+    .refine(
+      (val) => ["Single", "Married", "Divorced", "Widowed"].includes(val),
+      "Select marital status",
+    ),
   alternateMobile: z
     .string()
     .optional()

@@ -23,6 +23,8 @@ export const initialForm = {
   otherVillage: "",
   address: "",
   summary: "",
+  taluka: "",
+  availabilityTaluka: "",
   availabilityCategory: "",
   availabilityIndustry: "",
   availabilityCustomIndustry: "",
