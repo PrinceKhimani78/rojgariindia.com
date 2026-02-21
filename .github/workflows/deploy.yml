@@ -73,21 +73,41 @@ jobs:
           command_timeout: 10m
           script: |
             set -e
-            # Robust Node.js environment loading
-            export NVM_DIR="$HOME/.nvm"
-            [ -s "$NVM_DIR/nvm.sh" ] && source "$NVM_DIR/nvm.sh"
-            [ -s "$HOME/.bashrc" ] && source "$HOME/.bashrc"
-            [ -s "$HOME/.profile" ] && source "$HOME/.profile"
-
-            # Debugging info
+            
+            # --- DEBUG INFO ---
+            echo "User: $(whoami)"
+            echo "Shell: $SHELL"
             echo "Current PATH: $PATH"
-            echo "Node location: $(which node || echo 'Not found')"
-            echo "PM2 location: $(which pm2 || echo 'Not found')"
+            
+            # --- IMPROVED ENVIRONMENT LOADING ---
+            export NVM_DIR="$HOME/.nvm"
+            # Try loading NVM from multiple common locations
+            for nvm_init in "$HOME/.nvm/nvm.sh" "/usr/local/nvm/nvm.sh" "$HOME/.bashrc" "$HOME/.profile"; do
+              if [ -s "$nvm_init" ]; then
+                echo "Sourcing $nvm_init..."
+                source "$nvm_init" || true
+              fi
+            done
+
+            # --- PATH FALLBACK ---
+            # If node is still not found, try to find it in the NVM versions directory manually
+            if ! command -v node >/dev/null 2>&1; then
+              echo "Node not found in PATH, searching NVM versions..."
+              V_DIR=$(ls -d $HOME/.nvm/versions/node/v*/bin 2>/dev/null | tail -n 1)
+              if [ -n "$V_DIR" ]; then
+                 export PATH="$V_DIR:$PATH"
+                 echo "Manually added $V_DIR to PATH"
+              fi
+            fi
+
+            # Final check
+            echo "Node location: $(command -v node || echo 'STILL NOT FOUND')"
+            node -v || echo "Node execution failed"
 
             cd /home/rojgariindia.com/app
-
-            # Use absolute path for PM2 if possible
-            PM2_BIN=$(which pm2 || echo "pm2")
+            
+            # Use PM2 to manage the app
+            PM2_BIN=$(command -v pm2 || which pm2 || echo "pm2")
             $PM2_BIN stop rojgari-main || true
             $PM2_BIN delete rojgari-main || true
 
