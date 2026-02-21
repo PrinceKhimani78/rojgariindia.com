@@ -329,32 +329,39 @@ const ResumePage = () => {
     }
   };
 
-  const handleChange = async (arg1: any, arg2?: any) => {
+  const handleChange = async (
+    arg1: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement> | string,
+    arg2?: string | boolean | string[],
+  ) => {
     let name: string;
-    let value: any;
+    let value: string | boolean | string[] | undefined;
 
-    // 🔹 Case 1: Normal Input (event)
+    // 1. Handle Event-based inputs (Standard Inputs)
     if (typeof arg1 !== "string" && arg1?.target) {
       name = arg1.target.name;
-
-      if (arg1.target.type === "checkbox") {
-        value = arg1.target.checked;
+      if (
+        arg1.target instanceof HTMLInputElement &&
+        arg1.target.type === "checkbox"
+      ) {
+        value = (arg1.target as HTMLInputElement).checked;
       } else {
         value = arg1.target.value;
       }
     }
-    // 🔹 Case 2: SearchableSelectBox (name, value)
+    // 2. Handle Direct calls (SearchableSelectBox/MultiSelectBox)
     else {
       name = arg1 as string;
       value = arg2;
     }
 
-    let actualValue = "";
+    let actualValue: string | boolean | string[] | undefined;
 
-    if (typeof value === "string") {
+    if (typeof value === "string" || typeof value === "boolean" || Array.isArray(value)) {
       actualValue = value;
-    } else if (value && typeof value === "object" && "value" in value) {
-      actualValue = value.value;
+    } else if (value && typeof value === "object" && "value" in (value as any)) {
+      actualValue = (value as any).value as string;
+    } else {
+      actualValue = value as any;
     }
 
     if (!name || typeof name !== "string") return;
@@ -364,7 +371,7 @@ const ResumePage = () => {
 
       setExperiencesExperienced((prev) => {
         const updated = [...prev];
-        updated[index].industry = actualValue;
+        updated[index].industry = actualValue as string;
 
         if (actualValue !== "Other") {
           updated[index].customIndustry = "";
@@ -381,7 +388,7 @@ const ResumePage = () => {
 
       setExperiencesExperienced((prev) => {
         const updated = [...prev];
-        updated[index].customIndustry = actualValue;
+        updated[index].customIndustry = actualValue as string;
         return updated;
       });
 
@@ -391,7 +398,7 @@ const ResumePage = () => {
     if (name === "availabilityIndustry") {
       setForm((prev) => ({
         ...prev,
-        availabilityIndustry: actualValue,
+        availabilityIndustry: actualValue as string,
         availabilityCustomIndustry:
           actualValue !== "Other" ? "" : prev.availabilityCustomIndustry,
         availabilityJobCategory: "",
@@ -402,7 +409,7 @@ const ResumePage = () => {
     if (name === "availabilityCustomIndustry") {
       setForm((prev) => ({
         ...prev,
-        availabilityCustomIndustry: actualValue,
+        availabilityCustomIndustry: actualValue as string,
       }));
       return;
     }
@@ -439,7 +446,7 @@ const ResumePage = () => {
         fieldName === "year" ||
         fieldName === "passingYear"
       ) {
-        value = value.replace(/\D/g, "");
+        actualValue = (actualValue as string).replace(/\D/g, "");
       }
 
       // EXPERIENCE FIELDS
@@ -449,11 +456,11 @@ const ResumePage = () => {
       ) {
         setExperiences((prev) =>
           prev.map((item, i) =>
-            i === index ? { ...item, [fieldName]: value } : item,
+            i === index ? { ...item, [fieldName]: actualValue } : item,
           ),
         );
 
-        scheduleValidate(name, value);
+        scheduleValidate(name, actualValue);
         return;
       }
 
@@ -464,10 +471,10 @@ const ResumePage = () => {
       ) {
         setEducationList((prev) =>
           prev.map((item, i) =>
-            i === index ? { ...item, [fieldName]: value } : item,
+            i === index ? { ...item, [fieldName]: actualValue } : item,
           ),
         );
-        scheduleValidate(name, value);
+        scheduleValidate(name, actualValue);
         return;
       }
 
@@ -475,10 +482,10 @@ const ResumePage = () => {
       if (prefix === "skill" && skillSchema.shape[fieldName]) {
         setSkillsList((prev) =>
           prev.map((item, i) =>
-            i === index ? { ...item, [fieldName]: value } : item,
+            i === index ? { ...item, [fieldName]: actualValue } : item,
           ),
         );
-        scheduleValidate(name, value);
+        scheduleValidate(name, actualValue);
         return;
       }
 
@@ -486,10 +493,10 @@ const ResumePage = () => {
       if (prefix === "cert" && certificationSchema.shape[fieldName]) {
         setCertificationList((prev) =>
           prev.map((item, i) =>
-            i === index ? { ...item, [fieldName]: value } : item,
+            i === index ? { ...item, [fieldName]: actualValue } : item,
           ),
         );
-        scheduleValidate(name, value);
+        scheduleValidate(name, actualValue);
         return;
       }
     }
@@ -498,7 +505,7 @@ const ResumePage = () => {
     if (name === "state") {
       setForm((prev) => ({
         ...prev,
-        state: actualValue,
+        state: actualValue as string,
         district: "",
         taluka: "",
         village: "",
@@ -511,7 +518,7 @@ const ResumePage = () => {
     if (name === "district") {
       setForm((prev) => ({
         ...prev,
-        district: actualValue,
+        district: actualValue as string,
         taluka: "",
         village: "",
         otherVillage: "",
@@ -523,7 +530,7 @@ const ResumePage = () => {
     if (name === "taluka") {
       setForm((prev) => ({
         ...prev,
-        taluka: actualValue,
+        taluka: actualValue as string,
         village: "",
         otherVillage: "",
       }));
@@ -535,7 +542,7 @@ const ResumePage = () => {
     if (name === "availabilityState") {
       setForm((prev) => ({
         ...prev,
-        availabilityState: actualValue,
+        availabilityState: actualValue as string,
         availabilityDistrict: "",
         availabilityCity: [],
       }));
@@ -546,7 +553,7 @@ const ResumePage = () => {
     if (name === "availabilityDistrict") {
       setForm((prev) => ({
         ...prev,
-        availabilityDistrict: actualValue,
+        availabilityDistrict: actualValue as string,
         availabilityCity: [],
       }));
       scheduleValidate(name, actualValue);
@@ -554,22 +561,23 @@ const ResumePage = () => {
     }
 
     // MOBILE NUMBER & ALTERNATE MOBILE VALIDATION
-    if (name === "phone" || name === "alternateMobile") {
-      let digits = value.replace(/\D/g, "");
+    if (name === "phone" || name === "alternatePhone") {
+      const stringValue = typeof actualValue === "string" ? actualValue : "";
+      let normalizedValue = stringValue.replace(/\D/g, "");
 
       // If length > 10 and starts with 91, assume it's the prefix we added or user added
-      if (digits.length > 10 && digits.startsWith("91")) {
-        digits = digits.slice(2);
+      if (normalizedValue.length > 10 && normalizedValue.startsWith("91")) {
+        normalizedValue = normalizedValue.slice(2);
       }
 
       // Truncate to 10 digits
-      if (digits.length > 10) {
-        digits = digits.slice(0, 10);
+      if (normalizedValue.length > 10) {
+        normalizedValue = normalizedValue.slice(0, 10);
       }
 
-      let formatted = digits;
-      if (digits.length === 10) {
-        formatted = "+91 " + digits;
+      let formatted = normalizedValue;
+      if (normalizedValue.length === 10) {
+        formatted = "+91 " + normalizedValue;
       }
 
       setForm((prev) => ({
@@ -589,7 +597,7 @@ const ResumePage = () => {
       name === "totalExperience" ||
       name === "pincode"
     ) {
-      value = value.replace(/\D/g, "");
+      actualValue = (actualValue as string).replace(/\D/g, "");
     }
 
     setForm((prev) => ({ ...prev, [name]: actualValue }));
@@ -1221,7 +1229,7 @@ const ResumePage = () => {
                 name="languagesKnown"
                 value={form.languagesKnown}
                 options={INDIAN_LANGUAGES.map((l) => l.value)}
-                onChange={handleChange}
+                onChange={(e) => { handleChange(e as any); }}
                 error={errors.languagesKnown}
               />
             </div>
@@ -1338,7 +1346,7 @@ const ResumePage = () => {
                       name={`industry-${index}`}
                       value={exp.industry}
                       options={INDUSTRY_OPTIONS}
-                      onChange={handleChange}
+                      onChange={(e) => { handleChange(e as any); }}
                       error={errors[`industry-${index}`]}
                       required
                     />
@@ -1347,14 +1355,14 @@ const ResumePage = () => {
                         label="Enter Your Industry"
                         name={`customIndustry-${index}`}
                         value={exp.customIndustry || ""}
-                        onChange={handleChange}
+                        onChange={(e) => { handleChange(e as any); }}
                       />
                     )}
                     <InputBox
                       label="Position"
                       name={`position-${index}`}
                       value={exp.position}
-                      onChange={handleChange}
+                      onChange={(e) => { handleChange(e as any); }}
                       error={errors[`position-${index}`]}
                       required
                     />
@@ -1362,7 +1370,7 @@ const ResumePage = () => {
                       label="Company Name"
                       name={`company-${index}`}
                       value={exp.company}
-                      onChange={handleChange}
+                      onChange={(e) => { handleChange(e as any); }}
                       error={errors[`company-${index}`]}
                       required
                     />
@@ -1371,7 +1379,7 @@ const ResumePage = () => {
                         label="Notice Period (Days)"
                         name={`noticePeriod-${index}`}
                         value={exp.noticePeriod}
-                        onChange={handleChange}
+                        onChange={(e) => { handleChange(e as any); }}
                         error={errors[`noticePeriod-${index}`]}
                       />
                     )}
@@ -1380,7 +1388,7 @@ const ResumePage = () => {
                       name={`currentCity-${index}`}
                       value={exp.currentCity || ""}
                       options={talukaOptions}
-                      onChange={handleChange}
+                      onChange={(e) => { handleChange(e as any); }}
                       error={errors[`currentCity-${index}`]}
                       required
                     />
@@ -1392,7 +1400,7 @@ const ResumePage = () => {
                         ...villageOptions,
                         { label: "Other", value: "Other" },
                       ]}
-                      onChange={handleChange}
+                      onChange={(e) => { handleChange(e as any); }}
                       error={errors[`currentVillage-${index}`]}
                       required
                     />
@@ -1403,7 +1411,7 @@ const ResumePage = () => {
                           label="Enter Village Name"
                           name={`currentVillageOther-${index}`}
                           value={exp.currentVillageOther || ""}
-                          onChange={handleChange}
+                          onChange={(e) => { handleChange(e as any); }}
                           error={errors[`currentVillageOther-${index}`]}
                           required
                         />
@@ -1414,14 +1422,14 @@ const ResumePage = () => {
                       label="Start Date"
                       name={`startDate-${index}`}
                       value={exp.startDate}
-                      onChange={handleChange}
+                      onChange={(e) => { handleChange(e as any); }}
                       error={errors[`startDate-${index}`]}
                     />
                     <DatePicker
                       label="End Date"
                       name={`endDate-${index}`}
                       value={exp.endDate}
-                      onChange={handleChange}
+                      onChange={(e) => { handleChange(e as any); }}
                       error={errors[`endDate-${index}`]}
                     />
 
@@ -1431,7 +1439,7 @@ const ResumePage = () => {
                           label="Current Salary (₹)"
                           name={`currentWages-${index}`}
                           value={exp.currentWages || ""}
-                          onChange={handleChange}
+                          onChange={(e) => { handleChange(e as any); }}
                           error={errors[`currentWages-${index}`]}
                           required
                         />
@@ -1439,7 +1447,7 @@ const ResumePage = () => {
                           label="Expected Salary (₹)"
                           name="expectedSalary"
                           value={form.expectedSalary || ""}
-                          onChange={handleChange}
+                          onChange={(e) => { handleChange(e as any); }}
                           error={errors.expectedSalary}
                           required
                         />
@@ -1447,7 +1455,7 @@ const ResumePage = () => {
                           label="Experience (in Years)"
                           name="totalExperience"
                           value={form.totalExperience}
-                          onChange={handleChange}
+                          onChange={(e) => { handleChange(e as any); }}
                           error={errors.totalExperience}
                           required
                         />
@@ -1461,7 +1469,7 @@ const ResumePage = () => {
                         <textarea
                           name="summary"
                           value={form.summary}
-                          onChange={handleChange}
+                          onChange={(e) => { handleChange(e as any); }}
                           placeholder=" "
                           className={`peer w-full px-4 pt-6 pb-2 rounded-xl bg-white
                             border outline-none transition-all
@@ -1552,7 +1560,7 @@ const ResumePage = () => {
                     label="Degree"
                     name={`degree-${index}`}
                     value={edu.degree}
-                    onChange={handleChange}
+                    onChange={(e) => { handleChange(e as any); }}
                     error={errors[`degree-${index}`]}
                     required
                   />
@@ -1561,7 +1569,7 @@ const ResumePage = () => {
                     label="Grade / Percentage"
                     name={`grade-${index}`}
                     value={edu.grade}
-                    onChange={handleChange}
+                    onChange={(e) => { handleChange(e as any); }}
                     error={errors[`grade-${index}`]}
                   />
 
@@ -1570,7 +1578,7 @@ const ResumePage = () => {
                     label="University"
                     name={`university-${index}`}
                     value={edu.university}
-                    onChange={handleChange}
+                    onChange={(e) => { handleChange(e as any); }}
                     error={errors[`university-${index}`]}
                     required
                   />
@@ -1579,7 +1587,7 @@ const ResumePage = () => {
                     label="Passing Year"
                     name={`passingYear-${index}`}
                     value={edu.passingYear}
-                    onChange={handleChange}
+                    onChange={(e) => { handleChange(e as any); }}
                     error={errors[`passingYear-${index}`]}
                     required
                   />
@@ -1640,7 +1648,7 @@ const ResumePage = () => {
                     label="Certificate Name"
                     name={`cert-name-${index}`}
                     value={cert.name}
-                    onChange={handleChange}
+                    onChange={(e) => { handleChange(e as any); }}
                     error={errors[`cert-name-${index}`]}
                   />
 
@@ -1648,7 +1656,7 @@ const ResumePage = () => {
                     label="Year"
                     name={`cert-year-${index}`}
                     value={cert.year}
-                    onChange={handleChange}
+                    onChange={(e) => { handleChange(e as any); }}
                     error={errors[`cert-year-${index}`]}
                   />
 
@@ -1656,7 +1664,7 @@ const ResumePage = () => {
                     label="Achievement/Position"
                     name={`cert-achievement-${index}`}
                     value={cert.achievement}
-                    onChange={handleChange}
+                    onChange={(e) => { handleChange(e as any); }}
                     error={errors[`cert-achievement-${index}`]}
                   />
                 </div>
@@ -1707,7 +1715,7 @@ const ResumePage = () => {
                       label="Skill Name"
                       name={`skill-name-${index}`}
                       value={skill.name}
-                      onChange={handleChange}
+                      onChange={(e) => { handleChange(e as any); }}
                       error={errors[`skill-name-${index}`]}
                       required
                     />
@@ -1760,7 +1768,7 @@ const ResumePage = () => {
                   { label: "Contract", value: "Contract" },
                   { label: "Internship", value: "Internship" },
                 ]}
-                onChange={handleChange}
+                onChange={(e) => { handleChange(e as any); }}
                 error={errors.availabilityCategory}
                 required
               />
@@ -1770,7 +1778,7 @@ const ResumePage = () => {
                 name="availabilityIndustry"
                 value={form.availabilityIndustry}
                 options={INDUSTRY_OPTIONS}
-                onChange={handleChange}
+                onChange={(e) => { handleChange(e as any); }}
                 error={errors.availabilityIndustry}
                 required
               />
@@ -1780,7 +1788,7 @@ const ResumePage = () => {
                   label="Enter Your Industry"
                   name="availabilityCustomIndustry"
                   value={form.availabilityCustomIndustry || ""}
-                  onChange={handleChange}
+                  onChange={(e) => { handleChange(e as any); }}
                 />
               )}
 
@@ -1792,7 +1800,7 @@ const ResumePage = () => {
                   label: j,
                   value: j,
                 }))}
-                onChange={handleChange}
+                onChange={(e) => { handleChange(e as any); }}
                 error={errors.availabilityJobCategory}
                 required
               />
@@ -1805,7 +1813,7 @@ const ResumePage = () => {
                 name="availabilityState"
                 value={form.availabilityState}
                 options={availabilityStateOptions}
-                onChange={handleChange}
+                onChange={(e) => { handleChange(e as any); }}
                 required
               />
 
@@ -1814,7 +1822,7 @@ const ResumePage = () => {
                 name="availabilityDistrict"
                 value={form.availabilityDistrict}
                 options={availabilityDistrictOptions}
-                onChange={handleChange}
+                onChange={(e) => { handleChange(e as any); }}
                 required
               />
 
@@ -1835,8 +1843,7 @@ const ResumePage = () => {
                 label="Additional Info"
                 name="additionalInfo"
                 value={form.additionalInfo}
-                onChange={handleChange}
-                error={errors.additionalInfo}
+                onChange={(e) => handleChange(e)}
               />
             </div>
           </div>

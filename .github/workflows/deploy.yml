@@ -72,45 +72,14 @@ jobs:
           key: ${{ secrets.SSH_PRIVATE_KEY }}
           command_timeout: 10m
           script: |
-            set -e
+            export NVM_DIR=~/.nvm
+            [ -s "$NVM_DIR/nvm.sh" ] && source "$NVM_DIR/nvm.sh"
             
-            # --- DEBUG INFO ---
-            echo "User: $(whoami)"
-            echo "Shell: $SHELL"
-            echo "Current PATH: $PATH"
-            
-            # --- IMPROVED ENVIRONMENT LOADING ---
-            export NVM_DIR="$HOME/.nvm"
-            # Try loading NVM from multiple common locations
-            for nvm_init in "$HOME/.nvm/nvm.sh" "/usr/local/nvm/nvm.sh" "$HOME/.bashrc" "$HOME/.profile"; do
-              if [ -s "$nvm_init" ]; then
-                echo "Sourcing $nvm_init..."
-                source "$nvm_init" || true
-              fi
-            done
-
-            # --- PATH FALLBACK ---
-            # If node is still not found, try to find it in the NVM versions directory manually
-            if ! command -v node >/dev/null 2>&1; then
-              echo "Node not found in PATH, searching NVM versions..."
-              V_DIR=$(ls -d $HOME/.nvm/versions/node/v*/bin 2>/dev/null | tail -n 1)
-              if [ -n "$V_DIR" ]; then
-                 export PATH="$V_DIR:$PATH"
-                 echo "Manually added $V_DIR to PATH"
-              fi
-            fi
-
-            # Final check
-            echo "Node location: $(command -v node || echo 'STILL NOT FOUND')"
-            node -v || echo "Node execution failed"
-
             cd /home/rojgariindia.com/app
             
-            # Use PM2 to manage the app
+            # Restart sequence (no set -e)
             PM2_BIN=$(command -v pm2 || which pm2 || echo "pm2")
             $PM2_BIN stop rojgari-main || true
             $PM2_BIN delete rojgari-main || true
-
-            # Start using bash explicitly to avoid env issues in shebang
-            $PM2_BIN start bash --name rojgari-main -- ./start.sh
+            $PM2_BIN start start.sh --name rojgari-main
             $PM2_BIN save --force
