@@ -130,6 +130,7 @@ type ExperienceEntry = {
   startDate: string;
   endDate: string;
   currentWages?: string;
+  currentState?: string;
   currentCity?: string;
   currentVillage?: string;
   currentVillageOther?: string;
@@ -1191,7 +1192,6 @@ const ResumePage = () => {
                 ]}
                 onChange={(e: any, v?: any) => handleChange(e, v)}
                 error={errors.village}
-                required
               />
               {form.village === "Other" && (
                 <InputBox
@@ -1200,7 +1200,6 @@ const ResumePage = () => {
                   value={form.otherVillage || ""}
                   onChange={(e: any, v?: any) => handleChange(e, v)}
                   error={errors.otherVillage}
-                  required
                 />
               )}
               <InputBox
@@ -1384,6 +1383,15 @@ const ResumePage = () => {
                       />
                     )}
                     <SearchableSelectBox
+                      label="Current State"
+                      name={`currentState-${index}`}
+                      value={exp.currentState || ""}
+                      options={stateOptions}
+                      onChange={(e) => { handleChange(e as any); }}
+                      error={errors[`currentState-${index}`]}
+                      required
+                    />
+                    <SearchableSelectBox
                       label="City"
                       name={`currentCity-${index}`}
                       value={exp.currentCity || ""}
@@ -1402,7 +1410,6 @@ const ResumePage = () => {
                       ]}
                       onChange={(e) => { handleChange(e as any); }}
                       error={errors[`currentVillage-${index}`]}
-                      required
                     />
 
                     {exp.currentVillage === "Other" && (
@@ -1413,7 +1420,6 @@ const ResumePage = () => {
                           value={exp.currentVillageOther || ""}
                           onChange={(e) => { handleChange(e as any); }}
                           error={errors[`currentVillageOther-${index}`]}
-                          required
                         />
                       </div>
                     )}
@@ -1839,6 +1845,26 @@ const ResumePage = () => {
 
             {/* Row 3 */}
             <div className="grid grid-cols-1 gap-4">
+              <MultiSelectBox
+                label="Village"
+                name="availabilityVillage"
+                value={Array.isArray(form.availabilityVillage) ? (form.availabilityVillage as unknown as string[]) : []}
+                options={
+                  indiaData &&
+                    form.availabilityState &&
+                    form.availabilityDistrict &&
+                    Array.isArray(form.availabilityCity) &&
+                    (form.availabilityCity as string[]).length > 0
+                    ? [...new Set(
+                      (form.availabilityCity as string[]).flatMap(
+                        (city) => indiaData[form.availabilityState]?.[form.availabilityDistrict]?.[city] ?? []
+                      )
+                    )]
+                    : []
+                }
+                onChange={(e: any, v?: any) => handleChange(e, v)}
+                error={errors.availabilityVillage}
+              />
               <InputBox
                 label="Additional Info"
                 name="additionalInfo"
