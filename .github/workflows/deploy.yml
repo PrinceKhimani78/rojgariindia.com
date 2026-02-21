@@ -72,39 +72,15 @@ jobs:
           key: ${{ secrets.SSH_PRIVATE_KEY }}
           command_timeout: 10m
           script: |
-            # Load NVM if available
             export NVM_DIR="$HOME/.nvm"
             [ -s "$NVM_DIR/nvm.sh" ] && . "$NVM_DIR/nvm.sh"
-
-            # Find a working node binary (test each candidate)
-            NODE_BIN=""
-            for candidate in \
-              "$NVM_DIR/versions/node/$(ls $NVM_DIR/versions/node 2>/dev/null | tail -1)/bin/node" \
-              /usr/local/bin/node \
-              /usr/bin/nodejs \
-              /usr/lib/nodejs/bin/node \
-              $(which node 2>/dev/null); do
-              if [ -x "$candidate" ] && "$candidate" --version >/dev/null 2>&1; then
-                NODE_BIN="$candidate"
-                echo "Found working node: $NODE_BIN ($($NODE_BIN --version))"
-                break
-              fi
-            done
-
-            if [ -z "$NODE_BIN" ]; then
-              echo "ERROR: No working node binary found!"
-              exit 1
-            fi
+            
+            NODE_BIN="$NVM_DIR/versions/node/$(ls $NVM_DIR/versions/node | tail -1)/bin/node"
+            echo "Using node: $NODE_BIN ($($NODE_BIN --version))"
 
             cd /home/rojgariindia.com/app
-
-            PM2_BIN=$(command -v pm2 || which pm2 || echo "pm2")
-            $PM2_BIN stop rojgari-main || true
-            $PM2_BIN delete rojgari-main || true
-
-            # Use explicit interpreter so PM2 uses the working node, not /usr/bin/env node
-            $PM2_BIN start "$NODE_BIN" --name rojgari-main -- server.js \
-              --env NODE_ENV=production \
-              --env PORT=3020 \
-              --env NEXT_PUBLIC_BACKEND_API_URL=https://api.rojgariindia.com/api
-            $PM2_BIN save --force
+            
+            pm2 stop rojgari-main 2>/dev/null || true
+            pm2 delete rojgari-main 2>/dev/null || true
+            pm2 start "$NODE_BIN" --name rojgari-main -- server.js
+            pm2 save --force
