@@ -231,6 +231,14 @@ const ResumePage = () => {
       indiaData[form.availabilityState][form.availabilityDistrict],
     ).map((t) => ({ label: t, value: t }));
   }, [indiaData, form.availabilityState, form.availabilityDistrict]);
+
+  // Get all cities across all districts for a given state (for work exp)
+  const getExpCityOptions = (state: string): { label: string; value: string }[] => {
+    if (!indiaData || !state || !indiaData[state]) return [];
+    return [...new Set(
+      Object.values(indiaData[state]).flatMap((districts) => Object.keys(districts))
+    )].map((c) => ({ label: c, value: c }));
+  };
   // experience
   const [experiencesExperienced, setExperiencesExperienced] = useState<
     ExperienceEntry[]
@@ -1395,7 +1403,7 @@ const ResumePage = () => {
                       label="City"
                       name={`currentCity-${index}`}
                       value={exp.currentCity || ""}
-                      options={talukaOptions}
+                      options={getExpCityOptions(exp.currentState || "")}
                       onChange={(e) => { handleChange(e as any); }}
                       error={errors[`currentCity-${index}`]}
                       required
@@ -1841,16 +1849,13 @@ const ResumePage = () => {
                 error={errors.availabilityCity}
                 required
               />
-            </div>
 
-            {/* Row 3 */}
-            <div className="grid grid-cols-1 gap-4">
               <MultiSelectBox
                 label="Village"
                 name="availabilityVillage"
                 value={Array.isArray(form.availabilityVillage) ? (form.availabilityVillage as unknown as string[]) : []}
-                options={
-                  indiaData &&
+                options={[
+                  ...(indiaData &&
                     form.availabilityState &&
                     form.availabilityDistrict &&
                     Array.isArray(form.availabilityCity) &&
@@ -1860,11 +1865,25 @@ const ResumePage = () => {
                         (city) => indiaData[form.availabilityState]?.[form.availabilityDistrict]?.[city] ?? []
                       )
                     )]
-                    : []
-                }
+                    : []),
+                  "Other",
+                ]}
                 onChange={(e: any, v?: any) => handleChange(e, v)}
                 error={errors.availabilityVillage}
               />
+            </div>
+
+            {Array.isArray(form.availabilityVillage) &&
+              (form.availabilityVillage as unknown as string[]).includes("Other") && (
+                <InputBox
+                  label="Enter Village Name"
+                  name="availabilityOtherVillage"
+                  value={form.availabilityOtherVillage || ""}
+                  onChange={(e) => handleChange(e)}
+                  error={errors.availabilityOtherVillage}
+                />
+              )}
+            <div className="grid grid-cols-1 gap-4">
               <InputBox
                 label="Additional Info"
                 name="additionalInfo"
