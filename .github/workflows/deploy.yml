@@ -75,19 +75,38 @@ jobs:
             set -e
             # Robust Node.js environment loading
             export NVM_DIR="$HOME/.nvm"
-            [ -s "$NVM_DIR/nvm.sh" ] && source "$NVM_DIR/nvm.sh"
-            [ -s "$HOME/.bashrc" ] && source "$HOME/.bashrc"
-            [ -s "$HOME/.profile" ] && source "$HOME/.profile"
+            if [ -s "$NVM_DIR/nvm.sh" ]; then
+              source "$NVM_DIR/nvm.sh"
+            elif [ -s "/usr/local/nvm/nvm.sh" ]; then
+              source "/usr/local/nvm/nvm.sh"
+            fi
+
+            # Fallback: Manually add common NVM bin path to PATH
+            # This helps if 'source nvm.sh' doesn't automatically update PATH in non-interactive shells
+            if ! command -v node >/dev/null 2>&1; then
+              NODE_VERSION_BIN=$(ls -d $NVM_DIR/versions/node/v*/bin 2>/dev/null | tail -n 1)
+              if [ -n "$NODE_VERSION_BIN" ]; then
+                export PATH="$NODE_VERSION_BIN:$PATH"
+              fi
+            fi
+
+            # Final PATH fallback
+            export PATH="$PATH:/usr/local/bin:/usr/bin:/bin"
 
             # Debugging info
             echo "Current PATH: $PATH"
-            echo "Node location: $(which node || echo 'Not found')"
-            echo "PM2 location: $(which pm2 || echo 'Not found')"
+            echo "Node location: $(command -v node || echo 'Not found')"
+            echo "PM2 location: $(command -v pm2 || echo 'Not found')"
+
+            if ! command -v node >/dev/null 2>&1; then
+              echo "Error: Node.js not found in PATH"
+              exit 1
+            fi
 
             cd /home/rojgariindia.com/app
 
             # Use absolute path for PM2 if possible
-            PM2_BIN=$(which pm2 || echo "pm2")
+            PM2_BIN=$(command -v pm2 || which pm2 || echo "pm2")
             $PM2_BIN stop rojgari-main || true
             $PM2_BIN delete rojgari-main || true
 
