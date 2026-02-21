@@ -5,18 +5,15 @@ import Link from "next/link";
 import SearchableSelectBox from "@/components/resume/SearchableSelectBox";
 import Image from "next/image";
 import Particles from "react-tsparticles";
-import { z } from "zod";
 import BgVideo from "@/components/resume/BgVideo";
 import Popup from "@/components/resume/Popup";
 import InputBox from "@/components/resume/InputBox";
-import SelectBox from "@/components/resume/SelectBox";
 import DatePicker from "@/components/resume/DatePicker";
 import MultiSelectBox from "@/components/resume/MultiSelectBox";
 import EmailStep from "@/components/resume/popup/EmailStep";
 import OtpStep from "@/components/resume/popup/OtpStep";
 import {
   experienceSchema,
-  educationSchema,
   skillSchema,
   certificationSchema,
   resumeSchema,
@@ -28,7 +25,6 @@ import {
   normalizeIndianPhone,
   validateField as validateFieldUtil,
   validateForm as validateFormUtil,
-  validateExperienceDates as validateExperienceDatesUtil,
 } from "@/utils/formValidation";
 import { sendOtp, verifyOtp } from "@/services/otpService";
 
@@ -153,7 +149,6 @@ const ResumePage = () => {
   const [indiaData, setIndiaData] = useState<IndiaJson | null>(null);
   const [showPopup, setShowPopup] = useState(false);
   const [popupStep, setPopupStep] = useState<"email" | "otp">("email");
-  const [anim, setAnim] = useState("");
   const [emailVerificationLoading, setEmailVerificationLoading] =
     useState(false);
   const [otp, setOtp] = useState("");
@@ -339,7 +334,7 @@ const ResumePage = () => {
     let value: any;
 
     // 🔹 Case 1: Normal Input (event)
-    if (arg1?.target) {
+    if (typeof arg1 !== "string" && arg1?.target) {
       name = arg1.target.name;
 
       if (arg1.target.type === "checkbox") {
@@ -350,7 +345,7 @@ const ResumePage = () => {
     }
     // 🔹 Case 2: SearchableSelectBox (name, value)
     else {
-      name = arg1;
+      name = arg1 as string;
       value = arg2;
     }
 
@@ -753,67 +748,67 @@ const ResumePage = () => {
         workType === "experienced"
           ? experiencesExperienced
           : []
-              .filter(
-                (exp) =>
-                  exp.position.trim() !== "" || exp.company.trim() !== "",
-              )
-              .map((exp) => ({
-                industry: exp.industry,
+            .filter(
+              (exp) =>
+                exp.position.trim() !== "" || exp.company.trim() !== "",
+            )
+            .map((exp) => ({
+              industry: exp.industry,
 
-                position: exp.position,
-                company: exp.company,
-                start_date: exp.startDate,
-                end_date: exp.endDate || null,
-                salary_period: exp.noticePeriod,
-                is_current: !exp.endDate || exp.endDate === "",
-                current_wages: exp.currentWages
-                  ? Number(exp.currentWages)
-                  : null,
-                current_city: exp.currentCity,
-                current_village:
-                  exp.currentVillage === "Other (Type Manually)"
-                    ? exp.currentVillageOther
-                    : exp.currentVillage,
-              })),
+              position: exp.position,
+              company: exp.company,
+              start_date: exp.startDate,
+              end_date: exp.endDate || null,
+              salary_period: exp.noticePeriod,
+              is_current: !exp.endDate || exp.endDate === "",
+              current_wages: exp.currentWages
+                ? Number(exp.currentWages)
+                : null,
+              current_city: exp.currentCity,
+              current_village:
+                exp.currentVillage === "Other (Type Manually)"
+                  ? exp.currentVillageOther
+                  : exp.currentVillage,
+            })),
       education:
         workType === "experienced"
           ? educationExperienced.map((edu) => ({
+            degree: edu.degree,
+            university: edu.university,
+            passing_year: edu.passingYear,
+            grade: edu.grade,
+          }))
+          : educationFresher
+            .filter(
+              (edu) =>
+                edu.degree.trim() !== "" || edu.university.trim() !== "",
+            )
+            .map((edu) => ({
               degree: edu.degree,
               university: edu.university,
               passing_year: edu.passingYear,
               grade: edu.grade,
-            }))
-          : educationFresher
-              .filter(
-                (edu) =>
-                  edu.degree.trim() !== "" || edu.university.trim() !== "",
-              )
-              .map((edu) => ({
-                degree: edu.degree,
-                university: edu.university,
-                passing_year: edu.passingYear,
-                grade: edu.grade,
-              })),
+            })),
 
       skills:
         workType === "experienced"
           ? skillsExperienced
           : skillsFresher
-              .filter((skill) => skill.name.trim() !== "")
-              .map((skill) => ({
-                skill_name: skill.name,
-              })),
+            .filter((skill) => skill.name.trim() !== "")
+            .map((skill) => ({
+              skill_name: skill.name,
+            })),
       languages_known: form.languagesKnown,
       certifications:
         workType === "experienced"
           ? certificationsExperienced
           : certificationsFresher
-              .filter((cert) => cert.name.trim() !== "")
-              .map((cert) => ({
-                name: cert.name,
-                year: cert.year,
-                achievement: cert.achievement,
-              })),
+            .filter((cert) => cert.name.trim() !== "")
+            .map((cert) => ({
+              name: cert.name,
+              year: cert.year,
+              achievement: cert.achievement,
+            })),
     };
     console.log("Education being sent:", apiPayload.education);
     const BACKEND_URL = process.env.NEXT_PUBLIC_BACKEND_API_URL;
@@ -946,7 +941,7 @@ const ResumePage = () => {
   const experiences = workType === "experienced" ? experiencesExperienced : [];
 
   const setExperiences =
-    workType === "experienced" ? setExperiencesExperienced : () => {};
+    workType === "experienced" ? setExperiencesExperienced : () => { };
   const educationList =
     workType === "experienced" ? educationExperienced : educationFresher;
 
@@ -982,12 +977,12 @@ const ResumePage = () => {
       <Popup
         open={showPopup}
         onClose={() => setShowPopup(false)}
-        // onClose={() => {
-        //   if (popupStep === "email" && !form.email?.trim()) {
-        //     return;
-        //   }
-        //   setShowPopup(false);
-        // }}
+      // onClose={() => {
+      //   if (popupStep === "email" && !form.email?.trim()) {
+      //     return;
+      //   }
+      //   setShowPopup(false);
+      // }}
       >
         <div className="flex flex-col items-center gap-4 mb-4">
           <Image
@@ -1245,19 +1240,19 @@ const ResumePage = () => {
                 setExperiences((prev) =>
                   prev.length === 0
                     ? [
-                        {
-                          industry: "",
-                          position: "",
-                          company: "",
-                          noticePeriod: "",
-                          startDate: "",
-                          endDate: "",
-                          currentWages: "",
-                          currentCity: "",
-                          currentVillage: "",
-                          currentVillageOther: "",
-                        },
-                      ]
+                      {
+                        industry: "",
+                        position: "",
+                        company: "",
+                        noticePeriod: "",
+                        startDate: "",
+                        endDate: "",
+                        currentWages: "",
+                        currentCity: "",
+                        currentVillage: "",
+                        currentVillageOther: "",
+                      },
+                    ]
                     : prev,
                 );
 
@@ -1270,11 +1265,10 @@ const ResumePage = () => {
               }}
               className={`
       w-full h-12 rounded-lg transition cursor-pointer
-      ${
-        workType === "experienced"
-          ? "bg-[#72B76A] text-white border border-[#72B76A]"
-          : "bg-transparent text-[#72B76A] border border-[#72B76A]"
-      }
+      ${workType === "experienced"
+                  ? "bg-[#72B76A] text-white border border-[#72B76A]"
+                  : "bg-transparent text-[#72B76A] border border-[#72B76A]"
+                }
     `}
             >
               Experienced
@@ -1314,11 +1308,10 @@ const ResumePage = () => {
               }}
               className={`
       w-full h-12 rounded-lg transition cursor-pointer
-      ${
-        workType === "fresher"
-          ? "bg-[#72B76A] text-white border border-[#72B76A]"
-          : "bg-transparent text-[#72B76A] border border-[#72B76A]"
-      }
+      ${workType === "fresher"
+                  ? "bg-[#72B76A] text-white border border-[#72B76A]"
+                  : "bg-transparent text-[#72B76A] border border-[#72B76A]"
+                }
     `}
             >
               Fresher
@@ -1528,11 +1521,10 @@ const ResumePage = () => {
                               p.filter((_, i) => i !== p.length - 1),
                             )
                           }
-                          className={`w-7 h-7 text-xl font-bold rounded-md border transition-colors ${
-                            experiences.length === 1
-                              ? "text-[#A6D8A3] border-[#A6D8A3] cursor-not-allowed"
-                              : "text-[#72B76A] border-[#72B76A] hover:bg-[#72B76A] hover:text-white"
-                          }`}
+                          className={`w-7 h-7 text-xl font-bold rounded-md border transition-colors ${experiences.length === 1
+                            ? "text-[#A6D8A3] border-[#A6D8A3] cursor-not-allowed"
+                            : "text-[#72B76A] border-[#72B76A] hover:bg-[#72B76A] hover:text-white"
+                            }`}
                         >
                           –
                         </button>
@@ -1620,11 +1612,10 @@ const ResumePage = () => {
                         educationList.filter((_, i) => i !== index),
                       )
                     }
-                    className={`w-7 h-7 text-xl font-bold rounded-md border transition-colors ${
-                      educationList.length === 1
-                        ? "text-[#A6D8A3] border-[#A6D8A3] cursor-not-allowed"
-                        : "text-[#72B76A] border-[#72B76A] hover:bg-[#72B76A] hover:text-white"
-                    }`}
+                    className={`w-7 h-7 text-xl font-bold rounded-md border transition-colors ${educationList.length === 1
+                      ? "text-[#A6D8A3] border-[#A6D8A3] cursor-not-allowed"
+                      : "text-[#72B76A] border-[#72B76A] hover:bg-[#72B76A] hover:text-white"
+                      }`}
                   >
                     –
                   </button>
@@ -1691,11 +1682,10 @@ const ResumePage = () => {
                         p.filter((_, i) => i !== index),
                       )
                     }
-                    className={`w-7 h-7 text-xl font-bold rounded-md border transition-colors ${
-                      certificationList.length === 1
-                        ? "text-[#A6D8A3] border-[#A6D8A3] cursor-not-allowed"
-                        : "text-[#72B76A] border-[#72B76A] hover:bg-[#72B76A] hover:text-white"
-                    }`}
+                    className={`w-7 h-7 text-xl font-bold rounded-md border transition-colors ${certificationList.length === 1
+                      ? "text-[#A6D8A3] border-[#A6D8A3] cursor-not-allowed"
+                      : "text-[#72B76A] border-[#72B76A] hover:bg-[#72B76A] hover:text-white"
+                      }`}
                   >
                     –
                   </button>
@@ -1741,11 +1731,10 @@ const ResumePage = () => {
                   type="button"
                   disabled={skillsList.length === 1}
                   onClick={() => setSkillsList((prev) => prev.slice(0, -1))}
-                  className={`w-7 h-7 text-xl font-bold rounded-md border transition-colors ${
-                    skillsList.length === 1
-                      ? "text-[#A6D8A3] border-[#A6D8A3] cursor-not-allowed"
-                      : "text-[#72B76A] border-[#72B76A] hover:bg-[#72B76A] hover:text-white"
-                  }`}
+                  className={`w-7 h-7 text-xl font-bold rounded-md border transition-colors ${skillsList.length === 1
+                    ? "text-[#A6D8A3] border-[#A6D8A3] cursor-not-allowed"
+                    : "text-[#72B76A] border-[#72B76A] hover:bg-[#72B76A] hover:text-white"
+                    }`}
                 >
                   –
                 </button>
@@ -1878,10 +1867,9 @@ const ResumePage = () => {
             type="submit"
             disabled={loading || !form.declarationChecked}
             className={`submit-btn 
-              w-full h-12 cursor-pointer ${
-                loading || !form.declarationChecked
-                  ? "bg-[#5e9b55] opacity-50 cursor-not-allowed"
-                  : "bg-[#72B76A]"
+              w-full h-12 cursor-pointer ${loading || !form.declarationChecked
+                ? "bg-[#5e9b55] opacity-50 cursor-not-allowed"
+                : "bg-[#72B76A]"
               } text-white rounded-xl 
               font-semibold text-lg transition active:scale-95 flex items-center justify-center gap-2
             `}
