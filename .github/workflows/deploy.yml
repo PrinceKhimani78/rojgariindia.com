@@ -72,7 +72,7 @@ jobs:
           key: ${{ secrets.SSH_PRIVATE_KEY }}
           command_timeout: 10m
           script: |
-            export NVM_DIR="$HOME/.nvm"
+            export NVM_DIR="/home/rojgariindia.com/.nvm"
             [ -s "$NVM_DIR/nvm.sh" ] && . "$NVM_DIR/nvm.sh"
             
             NODE_BIN="$NVM_DIR/versions/node/$(ls $NVM_DIR/versions/node | tail -1)/bin/node"
@@ -82,5 +82,6 @@ jobs:
             
             pm2 stop rojgari-main 2>/dev/null || true
             pm2 delete rojgari-main 2>/dev/null || true
-            pm2 start "$NODE_BIN" --name rojgari-main -- server.js
+            NODE_ENV=production PORT=3020 NEXT_PUBLIC_BACKEND_API_URL=https://api.rojgariindia.com/api \
+              pm2 start "$NODE_BIN" --name rojgari-main -- server.js
             pm2 save --force
