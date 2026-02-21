@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect, useCallback } from "react";
+import React, { useState, useEffect, useCallback, useMemo } from "react";
 import Link from "next/link";
 import SearchableSelectBox from "@/components/resume/SearchableSelectBox";
 import Image from "next/image";
@@ -169,35 +169,72 @@ const ResumePage = () => {
   >({});
 
   const [form, setForm] = useState(initialForm);
-  // Location dropdown options
+  // Location dropdown options (Derived from indiaData)
+  const stateOptions = useMemo(() => {
+    if (!indiaData) return [];
+    return Object.keys(indiaData).map((s) => ({ label: s, value: s }));
+  }, [indiaData]);
 
-  const [stateOptions, setStateOptions] = useState<
-    { label: string; value: string }[]
-  >([]);
-  const [districtOptions, setDistrictOptions] = useState<
-    { label: string; value: string }[]
-  >([]);
+  const districtOptions = useMemo(() => {
+    if (!indiaData || !form.state || !indiaData[form.state]) return [];
+    return Object.keys(indiaData[form.state]).map((d) => ({
+      label: d,
+      value: d,
+    }));
+  }, [indiaData, form.state]);
 
-  const [talukaOptions, setTalukaOptions] = useState<
-    { label: string; value: string }[]
-  >([]);
+  const talukaOptions = useMemo(() => {
+    if (
+      !indiaData ||
+      !form.state ||
+      !form.district ||
+      !indiaData[form.state][form.district]
+    )
+      return [];
+    return Object.keys(indiaData[form.state][form.district]).map((t) => ({
+      label: t,
+      value: t,
+    }));
+  }, [indiaData, form.state, form.district]);
 
-  const [villageOptions, setVillageOptions] = useState<
-    { label: string; value: string }[]
-  >([]);
-  const [availabilityStateOptions, setAvailabilityStateOptions] = useState<
-    { label: string; value: string }[]
-  >([]);
-  const [availabilityDistrictOptions, setAvailabilityDistrictOptions] =
-    useState<{ label: string; value: string }[]>([]);
+  const villageOptions = useMemo(() => {
+    if (
+      !indiaData ||
+      !form.state ||
+      !form.district ||
+      !form.taluka ||
+      !indiaData[form.state][form.district][form.taluka]
+    )
+      return [];
+    return indiaData[form.state][form.district][form.taluka].map((v) => ({
+      label: v,
+      value: v,
+    }));
+  }, [indiaData, form.state, form.district, form.taluka]);
 
-  const [availabilityCityOptions, setAvailabilityCityOptions] = useState<
-    { label: string; value: string }[]
-  >([]);
+  const availabilityStateOptions = stateOptions;
 
-  const [availabilityVillageOptions, setAvailabilityVillageOptions] = useState<
-    { label: string; value: string }[]
-  >([]);
+  const availabilityDistrictOptions = useMemo(() => {
+    if (!indiaData || !form.availabilityState || !indiaData[form.availabilityState])
+      return [];
+    return Object.keys(indiaData[form.availabilityState]).map((d) => ({
+      label: d,
+      value: d,
+    }));
+  }, [indiaData, form.availabilityState]);
+
+  const availabilityCityOptions = useMemo(() => {
+    if (
+      !indiaData ||
+      !form.availabilityState ||
+      !form.availabilityDistrict ||
+      !indiaData[form.availabilityState][form.availabilityDistrict]
+    )
+      return [];
+    return Object.keys(
+      indiaData[form.availabilityState][form.availabilityDistrict],
+    ).map((t) => ({ label: t, value: t }));
+  }, [indiaData, form.availabilityState, form.availabilityDistrict]);
   // experience
   const [experiencesExperienced, setExperiencesExperienced] = useState<
     ExperienceEntry[]
@@ -254,29 +291,6 @@ const ResumePage = () => {
 
   const [photoPreview, setPhotoPreview] = useState<string | null>(null);
   const [photoFile, setPhotoFile] = useState<File | null>(null); // Store the actual file
-  // states
-  useEffect(() => {
-    const fetchStates = async () => {
-      try {
-        const res = await fetch("/api/location/states");
-        const result = await res.json();
-
-        if (result.success && result.data?.states) {
-          const formattedStates = result.data.states.map((item: any) => ({
-            label: item.name,
-            value: item.name,
-          }));
-
-          setStateOptions(formattedStates);
-          setAvailabilityStateOptions(formattedStates);
-        }
-      } catch (error) {
-        console.error("Failed to load states:", error);
-      }
-    };
-
-    fetchStates();
-  }, []);
 
   useEffect(() => {
     setIsClient(true);
@@ -487,77 +501,61 @@ const ResumePage = () => {
 
     //  personal info
     if (name === "state") {
-      const res = await fetch(`/api/location/districts?state=${value}`);
-      const result = await res.json();
-
-      if (result.success) {
-        setDistrictOptions(
-          result.data.districts.map((d: any) => ({
-            label: d.name,
-            value: d.name,
-          })),
-        );
-        setTalukaOptions([]);
-        setVillageOptions([]);
-      }
+      setForm((prev) => ({
+        ...prev,
+        state: actualValue,
+        district: "",
+        taluka: "",
+        village: "",
+        otherVillage: "",
+      }));
+      scheduleValidate(name, actualValue);
+      return;
     }
 
     if (name === "district") {
-      const res = await fetch(`/api/location/talukas?district=${value}`);
-      const result = await res.json();
-
-      if (result.success) {
-        setTalukaOptions(
-          result.data.talukas.map((t: any) => ({
-            label: t.name,
-            value: t.name,
-          })),
-        );
-        setVillageOptions([]);
-      }
+      setForm((prev) => ({
+        ...prev,
+        district: actualValue,
+        taluka: "",
+        village: "",
+        otherVillage: "",
+      }));
+      scheduleValidate(name, actualValue);
+      return;
     }
 
     if (name === "taluka") {
-      const res = await fetch(`/api/location/villages?taluka=${value}`);
-      const result = await res.json();
-
-      if (result.success) {
-        setVillageOptions(
-          result.data.villages.map((v: any) => ({
-            label: v.name,
-            value: v.name,
-          })),
-        );
-      }
+      setForm((prev) => ({
+        ...prev,
+        taluka: actualValue,
+        village: "",
+        otherVillage: "",
+      }));
+      scheduleValidate(name, actualValue);
+      return;
     }
+
     // ---------------- AVAILABILITY ----------------
     if (name === "availabilityState") {
-      const res = await fetch(`/api/location/districts?state=${value}`);
-      const result = await res.json();
-
-      if (result.success) {
-        setAvailabilityDistrictOptions(
-          result.data.districts.map((d: any) => ({
-            label: d.name,
-            value: d.name,
-          })),
-        );
-        setAvailabilityCityOptions([]);
-      }
+      setForm((prev) => ({
+        ...prev,
+        availabilityState: actualValue,
+        availabilityDistrict: "",
+        availabilityCity: [],
+      }));
+      scheduleValidate(name, actualValue);
+      return;
     }
 
     if (name === "availabilityDistrict") {
-      const res = await fetch(`/api/location/talukas?district=${value}`);
-      const result = await res.json();
-
-      if (result.success) {
-        setAvailabilityCityOptions(
-          result.data.talukas.map((t: any) => ({
-            label: t.name,
-            value: t.name,
-          })),
-        );
-      }
+      setForm((prev) => ({
+        ...prev,
+        availabilityDistrict: actualValue,
+        availabilityCity: [],
+      }));
+      scheduleValidate(name, actualValue);
+      return;
     }
 
     // MOBILE NUMBER & ALTERNATE MOBILE VALIDATION
