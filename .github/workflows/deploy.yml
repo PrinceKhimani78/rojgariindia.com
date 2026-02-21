@@ -72,12 +72,20 @@ jobs:
           key: ${{ secrets.SSH_PRIVATE_KEY }}
           command_timeout: 10m
           script: |
-            export NVM_DIR=~/.nvm
-            [ -s "$NVM_DIR/nvm.sh" ] && source "$NVM_DIR/nvm.sh"
+            export NVM_DIR="$HOME/.nvm"
+            [ -s "$NVM_DIR/nvm.sh" ] && . "$NVM_DIR/nvm.sh"
             
+            # Prefer NVM managed node if it exists to avoid permission issues with /usr/bin/node
+            if [ -d "$NVM_DIR/versions/node" ]; then
+              NODE_BIN_PATH=$(ls -d $NVM_DIR/versions/node/v*/bin 2>/dev/null | tail -n 1)
+              if [ -n "$NODE_BIN_PATH" ]; then
+                export PATH="$NODE_BIN_PATH:$PATH"
+                echo "Prioritizing Node from $NODE_BIN_PATH"
+              fi
+            fi
+
             cd /home/rojgariindia.com/app
             
-            # Restart sequence (no set -e)
             PM2_BIN=$(command -v pm2 || which pm2 || echo "pm2")
             $PM2_BIN stop rojgari-main || true
             $PM2_BIN delete rojgari-main || true

@@ -1049,7 +1049,7 @@ const ResumePage = () => {
                 label="First Name"
                 name="firstName"
                 value={form.firstName}
-                onChange={handleChange}
+                onChange={(e: any, v?: any) => handleChange(e, v)}
                 error={errors.firstName}
                 required
               />
@@ -1057,7 +1057,7 @@ const ResumePage = () => {
                 label="Last Name"
                 name="surName"
                 value={form.surName}
-                onChange={handleChange}
+                onChange={(e: any, v?: any) => handleChange(e, v)}
                 error={errors.surName}
                 required
               />
@@ -1099,7 +1099,7 @@ const ResumePage = () => {
                 label="Email"
                 name="email"
                 value={form.email}
-                onChange={handleChange}
+                onChange={(e: any, v?: any) => handleChange(e, v)}
                 error={errors.email}
                 required
               />
@@ -1107,7 +1107,7 @@ const ResumePage = () => {
                 label="Mobile Number"
                 name="phone"
                 value={form.phone}
-                onChange={handleChange}
+                onChange={(e: any, v?: any) => handleChange(e, v)}
                 error={errors.phone}
                 required
               />
@@ -1116,14 +1116,14 @@ const ResumePage = () => {
                 label="Alternate Mobile"
                 name="alternateMobile"
                 value={form.alternateMobile || ""}
-                onChange={handleChange}
+                onChange={(e: any, v?: any) => handleChange(e, v)}
                 error={errors.alternateMobile}
               />
               <DatePicker
                 label="Date of Birth"
                 name="dob"
                 value={form.dob || ""}
-                onChange={handleChange}
+                onChange={(e: any, v?: any) => handleChange(e, v)}
                 error={errors.dob}
                 required
               />
@@ -1136,7 +1136,7 @@ const ResumePage = () => {
                   { label: "Female", value: "Female" },
                   { label: "Other", value: "Other" },
                 ]}
-                onChange={handleChange}
+                onChange={(e: any, v?: any) => handleChange(e, v)}
                 error={errors.gender}
                 required
               />
@@ -1150,7 +1150,7 @@ const ResumePage = () => {
                   { label: "Divorced", value: "Divorced" },
                   { label: "Widowed", value: "Widowed" },
                 ]}
-                onChange={handleChange}
+                onChange={(e: any, v?: any) => handleChange(e, v)}
                 error={errors.maritalStatus}
                 required
               />
@@ -1159,7 +1159,7 @@ const ResumePage = () => {
                 name="state"
                 value={form.state}
                 options={stateOptions}
-                onChange={handleChange}
+                onChange={(e: any, v?: any) => handleChange(e, v)}
                 error={errors.state}
                 required
               />
@@ -1168,7 +1168,7 @@ const ResumePage = () => {
                 name="district"
                 value={form.district}
                 options={districtOptions}
-                onChange={handleChange}
+                onChange={(e: any, v?: any) => handleChange(e, v)}
                 error={errors.district}
                 required
               />
@@ -1177,7 +1177,7 @@ const ResumePage = () => {
                 name="taluka"
                 value={form.taluka}
                 options={talukaOptions}
-                onChange={handleChange}
+                onChange={(e: any, v?: any) => handleChange(e, v)}
                 error={errors.taluka}
                 required
               />
@@ -1189,7 +1189,7 @@ const ResumePage = () => {
                   ...villageOptions,
                   { label: "Other", value: "Other" },
                 ]}
-                onChange={handleChange}
+                onChange={(e: any, v?: any) => handleChange(e, v)}
                 error={errors.village}
                 required
               />
@@ -1198,7 +1198,7 @@ const ResumePage = () => {
                   label="Enter Village Name"
                   name="otherVillage"
                   value={form.otherVillage || ""}
-                  onChange={handleChange}
+                  onChange={(e: any, v?: any) => handleChange(e, v)}
                   error={errors.otherVillage}
                   required
                 />
@@ -1207,7 +1207,7 @@ const ResumePage = () => {
                 label="Address"
                 name="address"
                 value={form.address}
-                onChange={handleChange}
+                onChange={(e: any, v?: any) => handleChange(e, v)}
                 error={errors.address}
                 required
               />
@@ -1813,7 +1813,7 @@ const ResumePage = () => {
                 name="availabilityState"
                 value={form.availabilityState}
                 options={availabilityStateOptions}
-                onChange={(e) => { handleChange(e as any); }}
+                onChange={(e: any, v?: any) => handleChange(e, v)}
                 required
               />
 
@@ -1822,7 +1822,7 @@ const ResumePage = () => {
                 name="availabilityDistrict"
                 value={form.availabilityDistrict}
                 options={availabilityDistrictOptions}
-                onChange={(e) => { handleChange(e as any); }}
+                onChange={(e: any, v?: any) => handleChange(e, v)}
                 required
               />
 
@@ -1831,7 +1831,7 @@ const ResumePage = () => {
                 name="availabilityCity"
                 value={form.availabilityCity || []}
                 options={availabilityCityOptions.map((opt) => opt.value)}
-                onChange={handleChange}
+                onChange={(e: any, v?: any) => handleChange(e, v)}
                 error={errors.availabilityCity}
                 required
               />
@@ -1854,7 +1854,7 @@ const ResumePage = () => {
               id="declarationChecked"
               name="declarationChecked"
               checked={form.declarationChecked || false}
-              onChange={handleChange}
+              onChange={(e: any, v?: any) => handleChange(e, v)}
               className="w-5 h-5 rounded border-gray-300 text-[#72B76A] focus:ring-[#72B76A]"
             />
             <label
