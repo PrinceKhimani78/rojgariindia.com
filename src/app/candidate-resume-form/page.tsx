@@ -1239,7 +1239,7 @@ const ResumePage = () => {
                 name="languagesKnown"
                 value={form.languagesKnown}
                 options={INDIAN_LANGUAGES.map((l) => l.value)}
-                onChange={(e) => { handleChange(e as any); }}
+                onChange={(e: any, v?: any) => handleChange(e, v)}
                 error={errors.languagesKnown}
               />
             </div>
@@ -1356,7 +1356,7 @@ const ResumePage = () => {
                       name={`industry-${index}`}
                       value={exp.industry}
                       options={INDUSTRY_OPTIONS}
-                      onChange={(e) => { handleChange(e as any); }}
+                      onChange={(e: any, v?: any) => handleChange(e, v)}
                       error={errors[`industry-${index}`]}
                       required
                     />
@@ -1365,14 +1365,14 @@ const ResumePage = () => {
                         label="Enter Your Industry"
                         name={`customIndustry-${index}`}
                         value={exp.customIndustry || ""}
-                        onChange={(e) => { handleChange(e as any); }}
+                        onChange={(e: any, v?: any) => handleChange(e, v)}
                       />
                     )}
                     <InputBox
                       label="Position"
                       name={`position-${index}`}
                       value={exp.position}
-                      onChange={(e) => { handleChange(e as any); }}
+                      onChange={(e: any, v?: any) => handleChange(e, v)}
                       error={errors[`position-${index}`]}
                       required
                     />
@@ -1380,7 +1380,7 @@ const ResumePage = () => {
                       label="Company Name"
                       name={`company-${index}`}
                       value={exp.company}
-                      onChange={(e) => { handleChange(e as any); }}
+                      onChange={(e: any, v?: any) => handleChange(e, v)}
                       error={errors[`company-${index}`]}
                       required
                     />
@@ -1389,7 +1389,7 @@ const ResumePage = () => {
                         label="Notice Period (Days)"
                         name={`noticePeriod-${index}`}
                         value={exp.noticePeriod}
-                        onChange={(e) => { handleChange(e as any); }}
+                        onChange={(e: any, v?: any) => handleChange(e, v)}
                         error={errors[`noticePeriod-${index}`]}
                       />
                     )}
@@ -1398,7 +1398,7 @@ const ResumePage = () => {
                       name={`currentState-${index}`}
                       value={exp.currentState || ""}
                       options={stateOptions}
-                      onChange={(e) => { handleChange(e as any); }}
+                      onChange={(e: any, v?: any) => handleChange(e, v)}
                       error={errors[`currentState-${index}`]}
                       required
                     />
@@ -1407,7 +1407,7 @@ const ResumePage = () => {
                       name={`currentCity-${index}`}
                       value={exp.currentCity || ""}
                       options={getExpCityOptions(exp.currentState || "")}
-                      onChange={(e) => { handleChange(e as any); }}
+                      onChange={(e: any, v?: any) => handleChange(e, v)}
                       error={errors[`currentCity-${index}`]}
                       required
                     />
@@ -1419,7 +1419,7 @@ const ResumePage = () => {
                         ...getExpVillageOptions(exp.currentState || "", exp.currentCity || ""),
                         { label: "Other", value: "Other" },
                       ]}
-                      onChange={(e) => { handleChange(e as any); }}
+                      onChange={(e: any, v?: any) => handleChange(e, v)}
                       error={errors[`currentVillage-${index}`]}
                     />
 
@@ -1429,7 +1429,7 @@ const ResumePage = () => {
                           label="Enter Village Name"
                           name={`currentVillageOther-${index}`}
                           value={exp.currentVillageOther || ""}
-                          onChange={(e) => { handleChange(e as any); }}
+                          onChange={(e: any, v?: any) => handleChange(e, v)}
                           error={errors[`currentVillageOther-${index}`]}
                         />
                       </div>
@@ -1439,14 +1439,14 @@ const ResumePage = () => {
                       label="Start Date"
                       name={`startDate-${index}`}
                       value={exp.startDate}
-                      onChange={(e) => { handleChange(e as any); }}
+                      onChange={(e: any, v?: any) => handleChange(e, v)}
                       error={errors[`startDate-${index}`]}
                     />
                     <DatePicker
                       label="End Date"
                       name={`endDate-${index}`}
                       value={exp.endDate}
-                      onChange={(e) => { handleChange(e as any); }}
+                      onChange={(e: any, v?: any) => handleChange(e, v)}
                       error={errors[`endDate-${index}`]}
                     />
 
@@ -1456,7 +1456,7 @@ const ResumePage = () => {
                           label="Current Salary (₹)"
                           name={`currentWages-${index}`}
                           value={exp.currentWages || ""}
-                          onChange={(e) => { handleChange(e as any); }}
+                          onChange={(e: any, v?: any) => handleChange(e, v)}
                           error={errors[`currentWages-${index}`]}
                           required
                         />
@@ -1464,7 +1464,7 @@ const ResumePage = () => {
                           label="Expected Salary (₹)"
                           name="expectedSalary"
                           value={form.expectedSalary || ""}
-                          onChange={(e) => { handleChange(e as any); }}
+                          onChange={(e: any, v?: any) => handleChange(e, v)}
                           error={errors.expectedSalary}
                           required
                         />
@@ -1472,7 +1472,7 @@ const ResumePage = () => {
                           label="Experience (in Years)"
                           name="totalExperience"
                           value={form.totalExperience}
-                          onChange={(e) => { handleChange(e as any); }}
+                          onChange={(e: any, v?: any) => handleChange(e, v)}
                           error={errors.totalExperience}
                           required
                         />
@@ -1486,7 +1486,7 @@ const ResumePage = () => {
                         <textarea
                           name="summary"
                           value={form.summary}
-                          onChange={(e) => { handleChange(e as any); }}
+                          onChange={(e: any, v?: any) => handleChange(e, v)}
                           placeholder=" "
                           className={`peer w-full px-4 pt-6 pb-2 rounded-xl bg-white
                             border outline-none transition-all
@@ -1577,7 +1577,7 @@ const ResumePage = () => {
                     label="Degree"
                     name={`degree-${index}`}
                     value={edu.degree}
-                    onChange={(e) => { handleChange(e as any); }}
+                    onChange={(e: any, v?: any) => handleChange(e, v)}
                     error={errors[`degree-${index}`]}
                     required
                   />
@@ -1586,7 +1586,7 @@ const ResumePage = () => {
                     label="Grade / Percentage"
                     name={`grade-${index}`}
                     value={edu.grade}
-                    onChange={(e) => { handleChange(e as any); }}
+                    onChange={(e: any, v?: any) => handleChange(e, v)}
                     error={errors[`grade-${index}`]}
                   />
 
@@ -1595,7 +1595,7 @@ const ResumePage = () => {
                     label="University"
                     name={`university-${index}`}
                     value={edu.university}
-                    onChange={(e) => { handleChange(e as any); }}
+                    onChange={(e: any, v?: any) => handleChange(e, v)}
                     error={errors[`university-${index}`]}
                     required
                   />
@@ -1604,7 +1604,7 @@ const ResumePage = () => {
                     label="Passing Year"
                     name={`passingYear-${index}`}
                     value={edu.passingYear}
-                    onChange={(e) => { handleChange(e as any); }}
+                    onChange={(e: any, v?: any) => handleChange(e, v)}
                     error={errors[`passingYear-${index}`]}
                     required
                   />
@@ -1665,7 +1665,7 @@ const ResumePage = () => {
                     label="Certificate Name"
                     name={`cert-name-${index}`}
                     value={cert.name}
-                    onChange={(e) => { handleChange(e as any); }}
+                    onChange={(e: any, v?: any) => handleChange(e, v)}
                     error={errors[`cert-name-${index}`]}
                   />
 
@@ -1673,7 +1673,7 @@ const ResumePage = () => {
                     label="Year"
                     name={`cert-year-${index}`}
                     value={cert.year}
-                    onChange={(e) => { handleChange(e as any); }}
+                    onChange={(e: any, v?: any) => handleChange(e, v)}
                     error={errors[`cert-year-${index}`]}
                   />
 
@@ -1681,7 +1681,7 @@ const ResumePage = () => {
                     label="Achievement/Position"
                     name={`cert-achievement-${index}`}
                     value={cert.achievement}
-                    onChange={(e) => { handleChange(e as any); }}
+                    onChange={(e: any, v?: any) => handleChange(e, v)}
                     error={errors[`cert-achievement-${index}`]}
                   />
                 </div>
@@ -1732,7 +1732,7 @@ const ResumePage = () => {
                       label="Skill Name"
                       name={`skill-name-${index}`}
                       value={skill.name}
-                      onChange={(e) => { handleChange(e as any); }}
+                      onChange={(e: any, v?: any) => handleChange(e, v)}
                       error={errors[`skill-name-${index}`]}
                       required
                     />
@@ -1785,7 +1785,7 @@ const ResumePage = () => {
                   { label: "Contract", value: "Contract" },
                   { label: "Internship", value: "Internship" },
                 ]}
-                onChange={(e) => { handleChange(e as any); }}
+                onChange={(e: any, v?: any) => handleChange(e, v)}
                 error={errors.availabilityCategory}
                 required
               />
@@ -1795,7 +1795,7 @@ const ResumePage = () => {
                 name="availabilityIndustry"
                 value={form.availabilityIndustry}
                 options={INDUSTRY_OPTIONS}
-                onChange={(e) => { handleChange(e as any); }}
+                onChange={(e: any, v?: any) => handleChange(e, v)}
                 error={errors.availabilityIndustry}
                 required
               />
@@ -1805,7 +1805,7 @@ const ResumePage = () => {
                   label="Enter Your Industry"
                   name="availabilityCustomIndustry"
                   value={form.availabilityCustomIndustry || ""}
-                  onChange={(e) => { handleChange(e as any); }}
+                  onChange={(e: any, v?: any) => handleChange(e, v)}
                 />
               )}
 
@@ -1817,7 +1817,7 @@ const ResumePage = () => {
                   label: j,
                   value: j,
                 }))}
-                onChange={(e) => { handleChange(e as any); }}
+                onChange={(e: any, v?: any) => handleChange(e, v)}
                 error={errors.availabilityJobCategory}
                 required
               />
