@@ -6,9 +6,9 @@ export const experienceSchema = z
     position: z.string().min(1, "Position is required"),
     company: z.string().min(1, "Company name is required"),
     currentWages: z.string().min(1, "Current wages required"),
-    taluka: z.string().min(1, "Taluka is required"),
+    currentState: z.string().min(1, "State is required"),
     currentCity: z.string().min(1, "Current city required"),
-    currentVillage: z.string().min(1, "Current village required"),
+    currentVillage: z.string().optional(),
     currentVillageOther: z.string().optional(),
     noticePeriod: z.string().optional(),
     startDate: z.string().min(1, "Start date required"),
@@ -88,17 +88,16 @@ const baseSchema = {
   state: z.string().min(1, "State required"),
   district: z.string().min(1, "District required"),
   city: z.string().min(1, "City required"),
-  village: z.string().min(1, "Village required"),
+  village: z.string().optional(),
   address: z.string().min(1, "Address required"),
 
   // Availability
   expectedSalary: z.string().min(1, "Expected salary required"),
   availabilityCategory: z.string().min(1, "Category required"),
   availabilityJobCategory: z.string().min(1, "Job category required"),
-  availabilityState: z.string().min(1, "Availability state required"),
-  availabilityDistrict: z.string().min(1, "Availability district required"),
+  availabilityState: z.array(z.string()).nonempty("Select at least one state"),
   availabilityCity: z.array(z.string()).nonempty("Select at least one city"),
-  availabilityVillage: z.string().min(1, "Availability village required"),
+  availabilityVillage: z.string().optional(),
 
   // Summaries
   summary: z.string().optional(),
