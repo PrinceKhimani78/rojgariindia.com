@@ -241,7 +241,7 @@ const ResumePage = () => {
   const [educationExperienced, setEducationExperienced] = useState([
     { degree: "", university: "", passingYear: "", grade: "" },
   ]);
-  const [skillsExperienced, setSkillsExperienced] = useState([{ name: "" }]);
+  const [skillsExperienced, setSkillsExperienced] = useState([{ name: "", years: "", level: "" }]);
   const [certificationsExperienced, setCertificationsExperienced] = useState<
     CertificationEntry[]
   >([{ name: "", year: "", achievement: "" }]);
@@ -251,7 +251,7 @@ const ResumePage = () => {
     { degree: "", university: "", passingYear: "", grade: "" },
   ]);
 
-  const [skillsFresher, setSkillsFresher] = useState([{ name: "" }]);
+  const [skillsFresher, setSkillsFresher] = useState([{ name: "", years: "", level: "" }]);
 
   const [certificationsFresher, setCertificationsFresher] = useState<
     CertificationEntry[]
@@ -735,70 +735,52 @@ const ResumePage = () => {
       pincode: form.pincode,
 
       work_experience:
-        workType === "experienced"
-          ? experiencesExperienced
-          : []
-            .filter(
-              (exp) =>
-                exp.position.trim() !== "" || exp.company.trim() !== "",
-            )
-            .map((exp) => ({
-              industry: exp.industry,
+        (workType === "experienced" ? experiencesExperienced : [])
+          .filter((exp) => exp.position.trim() !== "" || exp.company.trim() !== "")
+          .map((exp) => ({
+            position: exp.position,
+            company: exp.company,
+            start_date: exp.startDate || null,
+            end_date: exp.endDate || null,
+            salary_period: exp.noticePeriod || "",
+            is_current: !exp.endDate || exp.endDate === "",
+            current_wages: exp.currentWages ? Number(exp.currentWages) : null,
+            current_city: exp.currentCity || "",
+            current_village:
+              exp.currentVillage === "Other (Type Manually)"
+                ? exp.currentVillageOther
+                : exp.currentVillage || "",
+          })),
 
-              position: exp.position,
-              company: exp.company,
-              start_date: exp.startDate,
-              end_date: exp.endDate || null,
-              salary_period: exp.noticePeriod,
-              is_current: !exp.endDate || exp.endDate === "",
-              current_wages: exp.currentWages
-                ? Number(exp.currentWages)
-                : null,
-              current_city: exp.currentCity,
-              current_village:
-                exp.currentVillage === "Other (Type Manually)"
-                  ? exp.currentVillageOther
-                  : exp.currentVillage,
-            })),
       education:
-        workType === "experienced"
-          ? educationExperienced.map((edu) => ({
+        (workType === "experienced" ? educationExperienced : educationFresher)
+          .filter((edu) => edu.degree.trim() !== "" || edu.university.trim() !== "")
+          .map((edu) => ({
             degree: edu.degree,
             university: edu.university,
             passing_year: edu.passingYear,
             grade: edu.grade,
-          }))
-          : educationFresher
-            .filter(
-              (edu) =>
-                edu.degree.trim() !== "" || edu.university.trim() !== "",
-            )
-            .map((edu) => ({
-              degree: edu.degree,
-              university: edu.university,
-              passing_year: edu.passingYear,
-              grade: edu.grade,
-            })),
+          })),
 
       skills:
-        workType === "experienced"
-          ? skillsExperienced
-          : skillsFresher
-            .filter((skill) => skill.name.trim() !== "")
-            .map((skill) => ({
-              skill_name: skill.name,
-            })),
+        (workType === "experienced" ? skillsExperienced : skillsFresher)
+          .filter((skill) => skill.name.trim() !== "")
+          .map((skill) => ({
+            skill_name: skill.name,
+            years_of_experience: skill.years || "",
+            level: skill.level || "",
+          })),
+
       languages_known: form.languagesKnown,
+
       certifications:
-        workType === "experienced"
-          ? certificationsExperienced
-          : certificationsFresher
-            .filter((cert) => cert.name.trim() !== "")
-            .map((cert) => ({
-              name: cert.name,
-              year: cert.year,
-              achievement: cert.achievement,
-            })),
+        (workType === "experienced" ? certificationsExperienced : certificationsFresher)
+          .filter((cert) => cert.name.trim() !== "")
+          .map((cert) => ({
+            name: cert.name,
+            year: cert.year,
+            achievement: cert.achievement,
+          })),
     };
     console.log("Education being sent:", apiPayload.education);
     const BACKEND_URL = process.env.NEXT_PUBLIC_BACKEND_API_URL;
@@ -912,7 +894,7 @@ const ResumePage = () => {
       setEducationList([
         { degree: "", university: "", passingYear: "", grade: "" },
       ]);
-      setSkillsList([{ name: "" }]);
+      setSkillsList([{ name: "", years: "", level: "" }]);
       setPhotoPreview(null);
       setPhotoFile(null);
       setErrors({});
@@ -1715,7 +1697,7 @@ const ResumePage = () => {
                 <button
                   type="button"
                   onClick={() =>
-                    setSkillsList((prev) => [...prev, { name: "" }])
+                    setSkillsList((prev) => [...prev, { name: "", years: "", level: "" }])
                   }
                   className="w-7 h-7 text-xl font-bold rounded-md text-[#72B76A] border border-[#72B76A] hover:bg-[#72B76A] hover:text-white"
                 >
