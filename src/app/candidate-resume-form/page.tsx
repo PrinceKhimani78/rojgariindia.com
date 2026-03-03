@@ -767,8 +767,8 @@ const ResumePage = () => {
           .filter((skill) => skill.name.trim() !== "")
           .map((skill) => ({
             skill_name: skill.name,
-            years_of_experience: skill.years ? skill.years : null,
-            level: skill.level || null,
+            years_of_experience: skill.years || "",
+            level: skill.level || "",
           })),
 
       languages_known: form.languagesKnown,
