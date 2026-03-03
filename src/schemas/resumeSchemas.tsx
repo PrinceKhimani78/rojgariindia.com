@@ -5,7 +5,7 @@ export const experienceSchema = z
     industry: z.string().min(1, "Industry is required"),
     position: z.string().min(1, "Position is required"),
     company: z.string().min(1, "Company name is required"),
-    currentWages: z.string().min(1, "Current wages required"),
+    currentWages: z.string().optional(),
     currentState: z.string().min(1, "State is required"),
     currentCity: z.string().min(1, "Current city required"),
     currentVillage: z.string().optional(),
@@ -44,8 +44,8 @@ export const certificationSchema = z.object({
 
 export const skillSchema = z.object({
   name: z.string().min(1, "Skill name required"),
-  level: z.string().min(1, "Skill level required"),
-  years: z.string().min(1, "Experience years required"),
+  level: z.string().optional(),
+  years: z.string().optional(),
 });
 
 const baseSchema = {
@@ -87,7 +87,7 @@ const baseSchema = {
   // Location Fields
   state: z.string().min(1, "State required"),
   district: z.string().min(1, "District required"),
-  city: z.string().min(1, "City required"),
+  city: z.string().optional(),
   village: z.string().optional(),
   address: z.string().min(1, "Address required"),
 
