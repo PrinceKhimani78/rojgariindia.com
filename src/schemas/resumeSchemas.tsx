@@ -97,7 +97,7 @@ const baseSchema = {
   availabilityJobCategory: z.string().min(1, "Job category required"),
   availabilityState: z.array(z.string()).nonempty("Select at least one state"),
   availabilityCity: z.array(z.string()).nonempty("Select at least one city"),
-  availabilityVillage: z.string().optional(),
+  availabilityVillage: z.array(z.string()).optional(),
 
   // Summaries
   summary: z.string().optional(),

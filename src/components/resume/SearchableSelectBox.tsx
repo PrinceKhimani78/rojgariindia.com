@@ -17,6 +17,7 @@ interface SearchableSelectBoxProps {
   placeholder?: string;
   disabled?: boolean;
   required?: boolean;
+  allowCustomInput?: boolean;
 }
 
 const SearchableSelectBox: React.FC<SearchableSelectBoxProps> = ({
@@ -29,6 +30,7 @@ const SearchableSelectBox: React.FC<SearchableSelectBoxProps> = ({
   placeholder = "Select...",
   disabled = false,
   required = false,
+  allowCustomInput = false,
 }) => {
   // console.log("OPTIONS RECEIVED:", name, options);
   const [isOpen, setIsOpen] = useState(false);
@@ -37,8 +39,13 @@ const SearchableSelectBox: React.FC<SearchableSelectBoxProps> = ({
   const containerRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
 
+  // Sync displayed label when value changes from outside (e.g. form reset)
   useEffect(() => {
-    setSearchTerm(value || "");
+    if (!isOpen) {
+      const selectedOption = (options || []).find((opt) => opt.value === value);
+      setSearchTerm(selectedOption ? selectedOption.label : value || "");
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [value]);
   useEffect(() => {
     setFilteredOptions(options || []);
@@ -69,36 +76,28 @@ const SearchableSelectBox: React.FC<SearchableSelectBoxProps> = ({
         !containerRef.current.contains(event.target as Node)
       ) {
         setIsOpen(false);
-
-        if (value !== searchTerm) {
-          // Check if searchTerm IS an option (case insensitive match maybe?)
-          const match = (options || []).find((opt: any) => {
-            const label = typeof opt === "string" ? opt : opt?.label || "";
-
-            return label.toLowerCase() === (searchTerm || "").toLowerCase();
-          });
-
-          if (match) {
-            const valueToSend = typeof match === "string" ? match : match.value;
-
-            notifyChange(valueToSend);
-          } else {
-            setSearchTerm(value || "");
-          }
+        // Restore display text to the selected option's label
+        const selectedOption = (options || []).find((opt) => opt.value === value);
+        if (selectedOption) {
+          setSearchTerm(selectedOption.label);
+        } else if (allowCustomInput && value) {
+          setSearchTerm(value);
+        } else {
+          setSearchTerm(value || "");
         }
       }
     };
     document.addEventListener("mousedown", handleClickOutside);
     return () => document.removeEventListener("mousedown", handleClickOutside);
-  }, [value, searchTerm, options]);
+  }, [value, options, allowCustomInput]);
 
   const notifyChange = (newValue: string) => {
     onChange(name, newValue);
   };
 
-  const handleSelect = (option: string) => {
-    setSearchTerm(option);
-    notifyChange(option);
+  const handleSelect = (option: SelectOption) => {
+    setSearchTerm(option.label);
+    notifyChange(option.value);
     setIsOpen(false);
   };
 
@@ -108,11 +107,32 @@ const SearchableSelectBox: React.FC<SearchableSelectBoxProps> = ({
 
     if (e.target.value === "") {
       notifyChange("");
+    } else if (allowCustomInput) {
+      // In custom input mode, update the value live as the user types
+      notifyChange(e.target.value);
+    }
+  };
+
+  const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (e.key === "Enter" && allowCustomInput && searchTerm.trim()) {
+      e.preventDefault();
+      const match = (options || []).find(
+        (opt) => opt.label.toLowerCase() === searchTerm.toLowerCase()
+      );
+      if (match) {
+        notifyChange(match.value);
+      } else {
+        notifyChange(searchTerm.trim());
+      }
+      setIsOpen(false);
     }
   };
 
   const handleFocus = () => {
-    if (!disabled) setIsOpen(true);
+    if (!disabled) {
+      setSearchTerm(""); // clear so all options are visible
+      setIsOpen(true);
+    }
   };
 
   return (
@@ -121,10 +141,11 @@ const SearchableSelectBox: React.FC<SearchableSelectBoxProps> = ({
         <input
           ref={inputRef}
           type="text"
-          name={name} // Needed for some form libs, but we use controlled
+          name={name}
           value={searchTerm || ""}
           onChange={handleInputChange}
           onFocus={handleFocus}
+          onKeyDown={handleKeyDown}
           placeholder={placeholder}
           disabled={disabled}
           autoComplete="off"
@@ -159,14 +180,23 @@ const SearchableSelectBox: React.FC<SearchableSelectBoxProps> = ({
             filteredOptions.map((option, idx) => (
               <li
                 key={option.value || idx}
-                onClick={() => handleSelect(option.value)}
-                className={`px-4 py-2 cursor-pointer hover:bg-gray-50 text-gray-700 text-sm ${
-                  option.value === value ? "bg-green-50" : ""
-                }`}
+                onClick={() => handleSelect(option)}
+                className={`px-4 py-2 cursor-pointer hover:bg-gray-50 text-gray-700 text-sm ${option.value === value ? "bg-green-50" : ""
+                  }`}
               >
                 {typeof option === "string" ? option : option.label}
               </li>
             ))
+          ) : allowCustomInput && searchTerm.trim() ? (
+            <li
+              className="px-4 py-2 cursor-pointer hover:bg-green-50 text-[#72B76A] text-sm italic"
+              onClick={() => {
+                notifyChange(searchTerm.trim());
+                setIsOpen(false);
+              }}
+            >
+              Use: &quot;{searchTerm.trim()}&quot;
+            </li>
           ) : (
             <li className="px-4 py-2 text-gray-400 text-sm italic">
               No results found
