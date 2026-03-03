@@ -31,8 +31,9 @@ export const initialForm = {
   availabilityJobCategory: "",
   availabilityState: [] as string[],
   availabilityCity: [] as string[],
-  availabilityVillage: "",
+  availabilityVillage: [] as string[],
   availabilityOtherVillage: "",
+  availabilityCustomJobCategory: "",
   expectedSalary: "",
   totalExperience: "",
   pincode: "",
@@ -122,7 +123,7 @@ export function validateField(
       availabilityCity: z
         .array(z.string())
         .nonempty("Select at least one city"),
-      availabilityVillage: z.string().optional(),
+      availabilityVillage: z.array(z.string()).optional(),
       joiningDate: z.string().min(1, "Joining date required"),
       availabilityJobCategory: z.string().min(1, "Job category required"),
       expectedSalary: z.string().min(1, "Expected salary required"),

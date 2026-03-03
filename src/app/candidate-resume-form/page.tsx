@@ -3,6 +3,7 @@
 import React, { useState, useEffect, useCallback, useMemo } from "react";
 import Link from "next/link";
 import SearchableSelectBox from "@/components/resume/SearchableSelectBox";
+import { INDUSTRY_OPTIONS, INDUSTRY_JOB_MAP, SelectOption } from "@/constants/industryData";
 import Image from "next/image";
 import Particles from "react-tsparticles";
 import BgVideo from "@/components/resume/BgVideo";
@@ -38,52 +39,7 @@ type IndiaJson = {
   };
 };
 
-type SelectOption = {
-  label: string;
-  value: string;
-};
 
-const INDUSTRY_OPTIONS: SelectOption[] = [
-  { label: "Healthcare", value: "Healthcare" },
-  { label: "Information Technology", value: "Information Technology" },
-  { label: "Construction", value: "Construction" },
-  { label: "Education", value: "Education" },
-  { label: "Finance & Accounting", value: "Finance & Accounting" },
-  { label: "Sales & Marketing", value: "Sales & Marketing" },
-  { label: "Manufacturing", value: "Manufacturing" },
-  { label: "Retail", value: "Retail" },
-  { label: "Logistics", value: "Logistics" },
-  { label: "Hospitality", value: "Hospitality" },
-  { label: "Engineering", value: "Engineering" },
-  { label: "Government", value: "Government" },
-  { label: "Legal", value: "Legal" },
-  { label: "Freelancer", value: "Freelancer" },
-  { label: "Other", value: "Other" },
-];
-
-const INDUSTRY_JOB_MAP: Record<string, string[]> = {
-  "Information Technology": [
-    "Frontend Developer",
-    "Backend Developer",
-    "Full Stack Developer",
-    "UI/UX Designer",
-    "QA Engineer",
-  ],
-  Healthcare: ["Doctor", "Nurse", "Pharmacist"],
-  Education: ["Teacher", "Professor", "Tutor"],
-  "Finance & Accounting": ["Accountant", "Auditor", "Tax Consultant"],
-  "Sales & Marketing": ["Sales Executive", "Marketing Manager"],
-  Manufacturing: ["Production Supervisor", "Machine Operator"],
-  Construction: ["Site Engineer", "Civil Engineer"],
-  Retail: ["Store Manager", "Sales Associate"],
-  Logistics: ["Warehouse Manager", "Delivery Executive"],
-  Hospitality: ["Hotel Manager", "Chef"],
-  Engineering: ["Mechanical Engineer", "Electrical Engineer"],
-  Government: ["Clerk", "Officer"],
-  Legal: ["Lawyer", "Legal Advisor"],
-  Freelancer: ["Freelancer"],
-  Other: ["Other"],
-};
 
 const INDIAN_LANGUAGES: SelectOption[] = [
   { label: "Hindi", value: "Hindi" },
@@ -566,11 +522,20 @@ const ResumePage = () => {
         ...prev,
         availabilityState: actualValue as string[],
         availabilityCity: [],
-        availabilityVillage: "",
+        availabilityVillage: [],
       }));
       scheduleValidate(name, actualValue);
       return;
     }
+
+    if (name === "availabilityJobCategory") {
+      setForm((prev) => ({
+        ...prev,
+        availabilityJobCategory: actualValue as string,
+      }));
+      return;
+    }
+
 
     // MOBILE NUMBER & ALTERNATE MOBILE VALIDATION
     if (name === "phone" || name === "alternatePhone") {
@@ -983,7 +948,7 @@ const ResumePage = () => {
       ? setCertificationsExperienced
       : setCertificationsFresher;
 
-  const jobCategoryOptions = INDUSTRY_JOB_MAP[form.availabilityIndustry] || [];
+  const jobCategoryOptions = (INDUSTRY_JOB_MAP[form.availabilityIndustry] || []).map((j) => ({ label: j, value: j }));
   return (
     <div className="relative min-h-screen w-full flex justify-center px-4 py-10 overflow-x-hidden">
       {loading && (
@@ -1255,7 +1220,7 @@ const ResumePage = () => {
                 setWorkType("experienced");
 
                 // Experience is required → ensure at least one row
-                setExperiences((prev) =>
+                setExperiencesExperienced((prev) =>
                   prev.length === 0
                     ? [
                       {
@@ -1305,8 +1270,8 @@ const ResumePage = () => {
                   ]);
                 }
 
-                // Clear experiences for fresher logic
-                setExperiences([]);
+                // NOTE: we intentionally do NOT clear experiencesExperienced here
+                // so that switching back to Experienced restores the entered data.
                 // Remove any experience-related validation errors
                 setErrors((prev) => {
                   const copy = { ...prev };
@@ -1813,13 +1778,11 @@ const ResumePage = () => {
                 label="Job Category"
                 name="availabilityJobCategory"
                 value={form.availabilityJobCategory}
-                options={jobCategoryOptions.map((j) => ({
-                  label: j,
-                  value: j,
-                }))}
+                options={jobCategoryOptions}
                 onChange={(e: any, v?: any) => handleChange(e, v)}
                 error={errors.availabilityJobCategory}
                 required
+                allowCustomInput
               />
               {/* </div> */}
 
