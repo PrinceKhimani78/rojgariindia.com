@@ -668,6 +668,7 @@ const ResumePage = () => {
     // Validate first
     const payload = {
       ...form,
+      city: form.taluka, // UI uses 'taluka' field for city
       phone: normalizeIndianPhone(form.phone),
       workType,
       experiences,
@@ -677,7 +678,11 @@ const ResumePage = () => {
 
     const vf = validateFormUtil(payload);
     if (!vf.isValid) {
+      console.log("[FORM VALIDATION ERRORS]", vf.errors);
       setErrors(vf.errors);
+      // Find first error and show it
+      const firstError = Object.values(vf.errors)[0];
+      if (firstError) showSnackbar(`Please fix: ${firstError}`, "error");
       window.scrollTo({ top: 0, behavior: "smooth" });
       return;
     }
@@ -697,7 +702,7 @@ const ResumePage = () => {
       address: form.address,
       state: form.state,
       district: form.district,
-      city: form.city,
+      city: form.taluka,
       village: form.village === "Other" ? form.otherVillage : form.village,
       country: "India",
       experienced: workType === "experienced",
